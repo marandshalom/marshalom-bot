@@ -1,8 +1,8 @@
 import fetch from "node-fetch";
 
-const TELEGRAM_TOKEN = process.env.8939570857:AAEtOI9vWCXdeB6yN3ZFnjGtOBPFq9VZhdA;
-const GEMINI_API_KEY = process.env.AQ.Ab8RN6JqkQmUF7cdv0dwwk-KFTHw6_gwmLV8MDFYVT_DE2IG9Q;
-const OWNER_CHAT_ID = process.env.1577576513;
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID;
 
 const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
 የቢዝነሱ ባለቤት ስም ማርሻሎም ነው።
