@@ -1,8 +1,9 @@
-import fetch from "node-fetch"; // 👈 የ fetch ግንኙነት አስተማማኝ እንዲሆን ተጨምሯል
+import fetch from "node-fetch";
 
-const TELEGRAM_TOKEN = "8939570857:AAFiqS65nE0SY2cxj-J8oZSVcJMa2mOAkzM";
-const GEMINI_API_KEY = "AQ.Ab8RN6JqkQmUF7cdv0dwwk-KFTHw6_gwmLV8MDFYVT_DE2IG9Q";
-const OWNER_CHAT_ID = "1577576513";
+// 🔐 የደኅንነት ቁልፎች ከ Environment Variables ብቻ እንዲነበቡ ተደርጓል
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID;
 
 const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
 የቢዝነሱ ባለቤት ስም ማርሻሎም ነው።
@@ -16,67 +17,66 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 ስለ ዋጋ: ምንም ቁጥር አትጥቀስ። "ዝርዝሩን ንገረኝ — ምርጥ ዋጋ እናዘጋጅልሃለን" በል።
 ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"በል።`;
 
+// 🛑 ቁልፎቹ ሰርቨሩ ላይ መኖራቸውን አስቀድሞ ማረጋገጫ
+if (!TELEGRAM_TOKEN || !GEMINI_API_KEY || !OWNER_CHAT_ID) {
+  console.error("CRITICAL ERROR: Missing essential Environment Variables!");
+}
+
 async function sendTelegram(chatId, text) {
-  try {
-    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: text })
-    });
-  } catch (e) {
-    console.error("sendTelegram error:", e);
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text: text })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Telegram API Error [Status ${response.status}]: ${errorData}`);
   }
 }
 
 async function forwardTelegram(fromChatId, messageId) {
-  try {
-    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`;
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: OWNER_CHAT_ID,
-        from_chat_id: fromChatId,
-        message_id: messageId
-      })
-    });
-  } catch (e) {
-    console.error("forwardTelegram error:", e);
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: OWNER_CHAT_ID,
+      from_chat_id: fromChatId,
+      message_id: messageId
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Telegram Forward Error [Status ${response.status}]: ${errorData}`);
   }
 }
 
 async function askGemini(text) {
-  try {
-    // 🔗 ወደ አዲሱና አስተማማኙ የ Gemini 2.0 API endpoint ተቀይሯል
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-    
-    const requestBody = {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: text }] }],
-      // ⚙️ የ System Instruction አወቃቀር ለቪ1ቤታ እንዲስማማ ተስተካክሏል
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
-    };
+    })
+  });
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody)
-    });
-
-    const data = await response.json();
-    
-    // 🔎 የጌሚኒ መልስ መምጣቱን ቼክ ማድረጊያ
-    if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-      return data.candidates[0].content.parts[0].text;
-    }
-    
-    // ኤፒአዩ መልስ ካልሰጠ ሰርቨሩ ላይ ምን እንደመጣ ሎግ አድርጎ ለማየት
-    console.error("Gemini API Unexpected Response:", JSON.stringify(data));
-    return "ይቅርታ፣ ጥያቄዎን በደንብ አልተረዳሁትም። እባክዎ እንደገና ይጻፉልኝ! 🙏";
-  } catch (e) {
-    console.error("askGemini catch error:", e);
-    return "የቴክኒክ ችግር አጋጥሟል፣ እባክዎ ጥቂት ቆይተው ይሞክሩ! 🛠️";
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Gemini API Error [Status ${response.status}]: ${errorData}`);
   }
+
+  const data = await response.json();
+  if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+    return data.candidates[0].content.parts[0].text;
+  }
+  
+  throw new Error("Gemini API returned an unexpected or empty structure.");
 }
 
 export const config = {
@@ -84,12 +84,13 @@ export const config = {
 };
 
 export default async function handler(req, res) {
+  // የጌት ጥያቄ ሲመጣ (የሰርቨር ጤንነት መፈተሻ)
   if (req.method === "GET") {
-    return res.status(200).send("Marshalom AI Bot is running perfectly! 🤖🚀");
+    return res.status(200).send("Marshalom AI Bot is secured and running! 🤖🛡️");
   }
 
   if (req.method !== "POST") {
-    return res.status(200).send("OK");
+    return res.status(405).send("Method Not Allowed");
   }
 
   try {
@@ -103,7 +104,7 @@ export default async function handler(req, res) {
     const firstName = message.from?.first_name || "ደንበኛ";
     const username = message.from?.username ? `@${message.from.username}` : "N/A";
 
-    // 🎤 የድምጽ መልእክት ሲመጣ
+    // 1. የድምፅ መልእክት አያያዝ
     if (message.voice) {
       await forwardTelegram(chatId, message.message_id);
       await sendTelegram(OWNER_CHAT_ID, `🎤 አዲስ የድምጽ መልእክት!\n👤 ከ: ${firstName} (${username})`);
@@ -111,23 +112,33 @@ export default async function handler(req, res) {
       return res.status(200).send("OK");
     }
 
-    // 💬 የጽሑፍ መልእክት ሲመጣ (እውነተኛ AI ምላሽ)
-    if (message.text) {
-      const text = message.text;
-      
-      // ጌሚኒን ጠይቆ ትክክለኛውን መልስ ያመጣል
-      const aiReply = await askGemini(text);
-      
-      // ለደንበኛው ይመልሳል
-      await sendTelegram(chatId, aiReply);
-      
-      // ላንተ (ለባለቤቱ) ኮፒ ይልክልሃል
-      await sendTelegram(OWNER_CHAT_ID, `💬 ደንበኛ [${firstName} (${username})]: ${text}\n🤖 ቦት የመለሰው: ${aiReply}`);
+    // 2. የጽሑፍ መልእክት አያያዝ (ከግቤት ማረጋገጫ ጋር)
+    if (message.text && message.text.trim().length > 0) {
+      const text = message.text.trim();
+
+      // ከመጠን በላይ ረጅም ጽሑፎችን ለመከላከል (Input Validation)
+      if (text.length > 2000) {
+        await sendTelegram(chatId, "ይቅርታ፣ የላኩት መልእክት በጣም ረጅም ነው። እባክዎ አሳጥረው ይጻፉልኝ። 🙏");
+        return res.status(200).send("OK");
+      }
+
+      try {
+        const aiReply = await askGemini(text);
+        
+        // 🔄 ሁሉንም Async ተግባራት ሰርቨሩ ሳይዘጋ በቅደም ተከተል መጠበቅ (Awaiting sequentially)
+        await sendTelegram(chatId, aiReply);
+        await sendTelegram(OWNER_CHAT_ID, `💬 ደንበኛ [${firstName} (${username})]: ${text}\n🤖 ቦት የመለሰው: ${aiReply}`);
+        
+      } catch (aiError) {
+        console.error("AI/Telegram Processing Error:", aiError);
+        // በጌሚኒ ወይም በቴሌግራም መቋረጥ ምክንያት ስህተት ቢፈጠር ለደንበኛው የሚላክ ወዳጃዊ መልእክት
+        await sendTelegram(chatId, "ይቅርታ፣ ጥያቄዎን ለማስተናገድ ትንሽ የቴክኒክ መስተጓጎል አጋጥሞኛል። እባክዎ ከጥቂት ደቂቃዎች በኋላ እንደገና ይሞክሩ! 🙏");
+      }
     }
 
     return res.status(200).send("OK");
   } catch (err) {
-    console.error("Handler error:", err);
-    return res.status(200).send("OK");
+    console.error("Global Handler Error:", err);
+    return res.status(500).send("Internal Server Error");
   }
 }
