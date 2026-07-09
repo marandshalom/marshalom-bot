@@ -36,27 +36,27 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // ⚠️ እዚህ ጋር የጌሚኒ ሊንክ ወደ v1 እና gemini-1.5-flash ተስተካክሏል (404 ኤረሩን ያጠፋዋል)
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: text }] }],
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
+        contents: [{ parts: [{ text: text }] }]
       })
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Gemini API Bad Status:", response.status, errText);
-      return "ይቅርታ፣ አሁን ከጌሚኒ ሰርቨር ጋር መገናኘት አልቻልኩም።";
+      console.error("Gemini API Error:", response.status, errText);
+      return "ይቅርታ፣ አሁን ከጌሚኒ ጋር መገናኘት አልቻልኩም።";
     }
 
     const data = await response.json();
     return data?.candidates?.[0]?.content?.parts?.[0]?.text || "ይቅርታ፣ አሁን መልስ መስጠት አልቻልኩም።";
   } catch (err) {
-    console.error("Gemini Error Exception:", err);
+    console.error("Gemini Error:", err);
     return "ይቅርታ፣ በቴክኒክ ምክንያት አሁን መልስ መስጠት አልቻልኩም።";
   }
 }
