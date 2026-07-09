@@ -1,3 +1,0 @@
-git add .
-git commit -m "Fix vercel config error"
-git push origin main
