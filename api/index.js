@@ -1,9 +1,8 @@
 import fetch from "node-fetch";
 
-// 🔐 የደኅንነት ቁልፎች ከ Environment Variables ብቻ ይነበባሉ
-const TELEGRAM_TOKEN = process.env.8939570857:AAEtOI9vWCXdeB6yN3ZFnjGtOBPFq9VZhdA;
-const GEMINI_API_KEY = process.env.AQ.Ab8RN6JqkQmUF7cdv0dwwk-KFTHw6_gwmLV8MDFYVT_DE2IG9Q;
-const OWNER_CHAT_ID = process.env.1577576513;
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID;
 
 const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
 የቢዝነሱ ባለቤት ስም ማርሻሎም ነው።
@@ -17,27 +16,20 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 ስለ ዋጋ: ምንም ቁጥር አትጥቀስ። "ዝርዝሩን ንገረኝ — ምርጥ ዋጋ እናዘጋጅልሃለን" በል።
 ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"በል።`;
 
-// 🛠️ ቁልፎች በሰርቨሩ ላይ መኖራቸውን አስቀድሞ ማረጋገጫ (ካልኖሩ እዚህ ላይ ይቆማል)
-if (!TELEGRAM_TOKEN || !GEMINI_API_KEY || !OWNER_CHAT_ID) {
-  throw new Error("CRITICAL ERROR: Missing essential Environment Variables! Stopping deployment.");
-}
-
 async function sendTelegram(chatId, text) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+  const url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage";
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text: text })
   });
-
   if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`Telegram API Error [Status ${response.status}]: ${errorData}`);
+    throw new Error("Telegram API Error");
   }
 }
 
 async function forwardTelegram(fromChatId, messageId) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`;
+  const url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/forwardMessage";
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -47,16 +39,13 @@ async function forwardTelegram(fromChatId, messageId) {
       message_id: messageId
     })
   });
-
   if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`Telegram Forward Error [Status ${response.status}]: ${errorData}`);
+    throw new Error("Telegram Forward Error");
   }
 }
 
 async function askGemini(text) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-  
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -67,16 +56,14 @@ async function askGemini(text) {
   });
 
   if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`Gemini API Error [Status ${response.status}]: ${errorData}`);
+    throw new Error("Gemini API Error");
   }
 
   const data = await response.json();
   if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
     return data.candidates[0].content.parts[0].text;
   }
-  
-  throw new Error("Gemini API returned an unexpected or empty structure.");
+  throw new Error("Gemini Unexpected response");
 }
 
 export const config = {
@@ -85,11 +72,17 @@ export const config = {
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
-    return res.status(200).send("Marshalom AI Bot is secured and running! 🤖🛡️");
+    return res.status(200).send("Marshalom Bot Running");
   }
 
   if (req.method !== "POST") {
     return res.status(405).send("Method Not Allowed");
+  }
+
+  // ቁልፎቹ በ Vercel ላይ መኖራቸውን እዚህ ውስጥ ነው የምንፈትሸው (Syntax Error እንዳይፈጥር)
+  if (!TELEGRAM_TOKEN || !GEMINI_API_KEY || !OWNER_CHAT_ID) {
+    console.error("Missing Environment Variables");
+    return res.status(500).send("Configuration Error");
   }
 
   try {
@@ -100,45 +93,41 @@ export default async function handler(req, res) {
 
     const message = update.message;
     const chatId = message.chat.id;
-    const firstName = message.from?.first_name || "ደንበኛ";
-    const username = message.from?.username ? `@${message.from.username}` : "N/A";
+    const firstName = message.from?.first_name || "Customer";
+    const username = message.from?.username ? "@" + message.from.username : "N/A";
 
-    // 🔊 የድምፅ መልእክት አያያዝ
     if (message.voice) {
       try {
         await forwardTelegram(chatId, message.message_id);
-        await sendTelegram(OWNER_CHAT_ID, `🎤 አዲስ የድምጽ መልእክት!\n👤 ከ: ${firstName} (${username})`);
+        await sendTelegram(OWNER_CHAT_ID, "🎤 New voice message from " + firstName);
         await sendTelegram(chatId, "⏳ የድምጽ መልእክትዎን ተቀብለናል! ማርሻሎም በቅርቡ ያነጋግርዎታል! 😊");
-      } catch (forwardError) {
-        console.error("Forwarding audio failed:", forwardError);
-        await sendTelegram(chatId, "ይቅርታ፣ የድምፅ መልእክትዎን ለባለቤቱ ማስተላለፍ አልተሳካም። እባክዎ በጽሑፍ ይሞክሩ። 🙏");
+      } catch (err) {
+        await sendTelegram(chatId, "ይቅርታ፣ የድምፅ መልእክትዎን ማስተላለፍ አልተሳካም። እባክዎ በጽሑፍ ይሞክሩ። 🙏");
       }
       return res.status(200).send("OK");
     }
 
-    // 💬 የጽሑፍ መልእክት አያያዝ
     if (message.text && message.text.trim().length > 0) {
       const text = message.text.trim();
 
       if (text.length > 2000) {
-        await sendTelegram(chatId, "ይቅርታ፣ የላኩት መልእክት በጣም ረጅም ነው። እባክዎ አሳጥረው ይጻፉልኝ። 🙏");
+        await sendTelegram(chatId, "ይቅርታ፣ መልእክትዎ በጣም ረጅም ነው።");
         return res.status(200).send("OK");
       }
 
       try {
         const aiReply = await askGemini(text);
         await sendTelegram(chatId, aiReply);
-        await sendTelegram(OWNER_CHAT_ID, `💬 ደንበኛ [${firstName} (${username})]: ${text}\n🤖 ቦት የመለሰው: ${aiReply}`);
-        
+        await sendTelegram(OWNER_CHAT_ID, "💬 Customer: " + text + "\n🤖 Bot: " + aiReply);
       } catch (aiError) {
-        console.error("AI/Telegram Processing Error:", aiError);
+        console.error("Processing Error:", aiError);
         await sendTelegram(chatId, "ይቅርታ፣ ጥያቄዎን ለማስተናገድ ትንሽ የቴክኒክ መስተጓጎል አጋጥሞኛል። እባክዎ ከጥቂት ደቂቃዎች ወደ ፊት ሞክሩ። 🙏");
       }
     }
 
     return res.status(200).send("OK");
-  } catch (err) {
-    console.error("Global Handler Error:", err);
-    return res.status(500).send("Internal Server Error");
+  } catch (globalError) {
+    console.error("Global Error:", globalError);
+    return res.status(200).send("OK");
   }
 }
