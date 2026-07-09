@@ -11,33 +11,54 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"በል።`;
 
 async function sendTelegram(chatId, text) {
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: text })
-  });
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: text })
+    });
+  } catch (e) {
+    console.error("Telegram send error:", e);
+  }
 }
 
 async function forwardTelegram(fromChatId, messageId) {
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: OWNER_CHAT_ID, from_chat_id: fromChatId, message_id: messageId })
-  });
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: OWNER_CHAT_ID, from_chat_id: fromChatId, message_id: messageId })
+    });
+  } catch (e) {
+    console.error("Telegram forward error:", e);
+  }
 }
 
 async function askGemini(text) {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: text }] }],
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
-    })
-  });
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: text }] }],
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
+      })
+    });
 
-  const data = await response.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "ይቅርታ፣ አሁን መልስ መስጠት አልቻልኩም።";
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Gemini API Bad Status:", response.status, errText);
+      return "ይቅርታ፣ አሁን ከጌሚኒ ሰርቨር ጋር መገናኘት አልቻልኩም።";
+    }
+
+    const data = await response.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "ይቅርታ፣ አሁን መልስ መስጠት አልቻልኩም።";
+  } catch (err) {
+    console.error("Gemini Error Exception:", err);
+    return "ይቅርታ፣ በቴክኒክ ምክንያት አሁን መልስ መስጠት አልቻልኩም።";
+  }
 }
 
 export default async function handler(req, res) {
@@ -64,6 +85,7 @@ export default async function handler(req, res) {
 
     return res.status(200).send("OK");
   } catch (err) {
+    console.error("Handler error:", err);
     return res.status(200).send("OK");
   }
 }
