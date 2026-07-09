@@ -48,7 +48,11 @@ async function askGemini(text) {
   });
   const data = await response.json();
   return data.candidates[0].content.parts[0].text;
-}
+}export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
