@@ -15,43 +15,60 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"`;
 
 async function sendTelegram(chatId, text) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: text })
-  });
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: text })
+    });
+  } catch (e) {
+    console.error("sendTelegram error:", e);
+  }
 }
 
-async function forwardTelegram(chatId, messageId) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`;
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: OWNER_CHAT_ID,
-      from_chat_id: chatId,
-      message_id: messageId
-    })
-  });
+async function forwardTelegram(fromChatId, messageId) {
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`;
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: OWNER_CHAT_ID,
+        from_chat_id: fromChatId,
+        message_id: messageId
+      })
+    });
+  } catch (e) {
+    console.error("forwardTelegram error:", e);
+  }
 }
 
 async function askGemini(text) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents: [{ role: "user", parts: [{ text: text }] }]
-    })
-  });
-  const data = await response.json();
-  return data.candidates[0].content.parts[0].text;
-}export const config = {
-  api: {
-    bodyParser: true,
-  },
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: text }] }]
+      })
+    });
+    const data = await response.json();
+    console.log("Gemini response:", JSON.stringify(data));
+    if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+      return data.candidates[0].content.parts[0].text;
+    }
+    return "ይቅርታ፣ እንደገና ይሞክሩ! 🙏";
+  } catch (e) {
+    console.error("askGemini error:", e);
+    return "ይቅርታ፣ እንደገና ይሞክሩ! 🙏";
+  }
+}
+
+export const config = {
+  api: { bodyParser: true }
 };
 
 export default async function handler(req, res) {
@@ -60,12 +77,12 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== "POST") {
-    return res.status(405).send("Method not allowed");
+    return res.status(200).send("OK");
   }
 
   try {
     const update = req.body;
-    if (!update.message) {
+    if (!update || !update.message) {
       return res.status(200).send("OK");
     }
 
@@ -74,30 +91,23 @@ export default async function handler(req, res) {
     const firstName = message.from?.first_name || "ደንበኛ";
     const username = message.from?.username ? `@${message.from.username}` : "N/A";
 
-    // Handle voice message
     if (message.voice) {
       await forwardTelegram(chatId, message.message_id);
-      await sendTelegram(OWNER_CHAT_ID, `🎤 ድምጽ መልእክት!\n👤 ${firstName} (${username})`);
+      await sendTelegram(OWNER_CHAT_ID, `🎤 ድምጽ!\n👤 ${firstName} (${username})`);
       await sendTelegram(chatId, "⏳ ድምጽ መልእክትዎን ተቀብለናል!\nባለቤቱ በቅርቡ ይደውሉልዎታል! 😊");
       return res.status(200).send("OK");
     }
 
-    // Handle text message
     if (message.text) {
       const text = message.text;
-      try {
-        const aiReply = await askGemini(text);
-        await sendTelegram(chatId, aiReply);
-        await sendTelegram(OWNER_CHAT_ID, `💬 ደንበኛ ጻፈ: ${text}\n👤 ${firstName} (${username})`);
-      } catch (err) {
-        await sendTelegram(chatId, "ይቅርታ፣ እንደገና ይሞክሩ! 🙏");
-        await sendTelegram(OWNER_CHAT_ID, `⚠️ Error: ${err.message}`);
-      }
+      const aiReply = await askGemini(text);
+      await sendTelegram(chatId, aiReply);
+      await sendTelegram(OWNER_CHAT_ID, `💬 ደንበኛ ጻፈ: ${text}\n👤 ${firstName} (${username})`);
     }
 
     return res.status(200).send("OK");
   } catch (err) {
-    console.error("Error:", err);
+    console.error("Handler error:", err);
     return res.status(200).send("OK");
   }
 }
