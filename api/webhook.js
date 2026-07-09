@@ -1,6 +1,5 @@
 import fetch from "node-fetch";
 
-// 🔐 የደኅንነት ቁልፎች ከ Environment Variables ብቻ እንዲነበቡ ተደርጓል
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID;
@@ -17,9 +16,9 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 ስለ ዋጋ: ምንም ቁጥር አትጥቀስ። "ዝርዝሩን ንገረኝ — ምርጥ ዋጋ እናዘጋጅልሃለን" በል።
 ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"በል።`;
 
-// 🛑 ቁልፎቹ ሰርቨሩ ላይ መኖራቸውን አስቀድሞ ማረጋገጫ
+// 🛠️ ማስተካከያ #2: ቁልፎች ከሌሉ ኮዱ ወደ ፊት እንዳይሄድ እዚህ ላይ እንዲቆም ተደርጓል
 if (!TELEGRAM_TOKEN || !GEMINI_API_KEY || !OWNER_CHAT_ID) {
-  console.error("CRITICAL ERROR: Missing essential Environment Variables!");
+  throw new Error("CRITICAL ERROR: Missing essential Environment Variables! Stopping deployment.");
 }
 
 async function sendTelegram(chatId, text) {
@@ -84,7 +83,6 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // የጌት ጥያቄ ሲመጣ (የሰርቨር ጤንነት መፈተሻ)
   if (req.method === "GET") {
     return res.status(200).send("Marshalom AI Bot is secured and running! 🤖🛡️");
   }
@@ -104,19 +102,24 @@ export default async function handler(req, res) {
     const firstName = message.from?.first_name || "ደንበኛ";
     const username = message.from?.username ? `@${message.from.username}` : "N/A";
 
-    // 1. የድምፅ መልእክት አያያዝ
+    // 🔊 የድምፅ መልእክት አያያዝ
     if (message.voice) {
-      await forwardTelegram(chatId, message.message_id);
-      await sendTelegram(OWNER_CHAT_ID, `🎤 አዲስ የድምጽ መልእክት!\n👤 ከ: ${firstName} (${username})`);
-      await sendTelegram(chatId, "⏳ የድምጽ መልእክትዎን ተቀብለናል! ማርሻሎም በቅርቡ ያነጋግርዎታል! 😊");
+      // 🛠️ ማስተካከያ #3: forwardTelegram በትክክለኛ try-catch ተከቧል
+      try {
+        await forwardTelegram(chatId, message.message_id);
+        await sendTelegram(OWNER_CHAT_ID, `🎤 አዲስ የድምጽ መልእክት!\n👤 ከ: ${firstName} (${username})`);
+        await sendTelegram(chatId, "⏳ የድምጽ መልእክትዎን ተቀብለናል! ማርሻሎም በቅርቡ ያነጋግርዎታል! 😊");
+      } catch (forwardError) {
+        console.error("Forwarding audio failed:", forwardError);
+        await sendTelegram(chatId, "ይቅርታ፣ የድምፅ መልእክትዎን ለባለቤቱ ማስተላለፍ አልተሳካም። እባክዎ በጽሑፍ ይሞክሩ። 🙏");
+      }
       return res.status(200).send("OK");
     }
 
-    // 2. የጽሑፍ መልእክት አያያዝ (ከግቤት ማረጋገጫ ጋር)
+    // 💬 የጽሑፍ መልእክት አያያዝ
     if (message.text && message.text.trim().length > 0) {
       const text = message.text.trim();
 
-      // ከመጠን በላይ ረጅም ጽሑፎችን ለመከላከል (Input Validation)
       if (text.length > 2000) {
         await sendTelegram(chatId, "ይቅርታ፣ የላኩት መልእክት በጣም ረጅም ነው። እባክዎ አሳጥረው ይጻፉልኝ። 🙏");
         return res.status(200).send("OK");
@@ -124,15 +127,13 @@ export default async function handler(req, res) {
 
       try {
         const aiReply = await askGemini(text);
-        
-        // 🔄 ሁሉንም Async ተግባራት ሰርቨሩ ሳይዘጋ በቅደም ተከተል መጠበቅ (Awaiting sequentially)
         await sendTelegram(chatId, aiReply);
         await sendTelegram(OWNER_CHAT_ID, `💬 ደንበኛ [${firstName} (${username})]: ${text}\n🤖 ቦት የመለሰው: ${aiReply}`);
         
       } catch (aiError) {
         console.error("AI/Telegram Processing Error:", aiError);
-        // በጌሚኒ ወይም በቴሌግራም መቋረጥ ምክንያት ስህተት ቢፈጠር ለደንበኛው የሚላክ ወዳጃዊ መልእክት
-        await sendTelegram(chatId, "ይቅርታ፣ ጥያቄዎን ለማስተናገድ ትንሽ የቴክኒክ መስተጓጎል አጋጥሞኛል። እባክዎ ከጥቂት ደቂቃዎች በኋላ እንደገና ይሞክሩ! 🙏");
+        // 🛠️ ማስተካከያ #1: የተቆረጠው የአማርኛ መልእክት ሙሉ በሙሉ ተስተካክሏል
+        await sendTelegram(chatId, "ይቅርታ፣ ጥያቄዎን ለማስተናገድ ትንሽ የቴክኒክ መስተጓጎል አጋጥሞኛል። እባክዎ ከጥቂት ደቂቃዎች ወደ ፊት ሞክሩ። 🙏");
       }
     }
 
