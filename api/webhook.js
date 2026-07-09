@@ -1,5 +1,5 @@
 // ⚠️ ቁልፎቹ ከ process.env ላይ ብቻ ነው የሚነበቡት (ደኅንነቱ የተጠበቀ ነው)
-const TELEGRAM_TOKEN = process.env.8939570857:AAFiqS65nE0SY2cxj-J8oZSVcJMa2mOAkzM;
+const TELEGRAM_TOKEN = process.env.8939570857:8939570857:AAEtOI9vWCXdeB6yN3ZFnjGtOBPFq9VZhdA;
 const GEMINI_API_KEY = process.env.AQ.Ab8RN6JqkQmUF7cdv0dwwk-KFTHw6_gwmLV8MDFYVT_DE2IG9Q;
 const OWNER_CHAT_ID = process.env.1577576513;
 
