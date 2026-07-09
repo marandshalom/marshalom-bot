@@ -23,9 +23,7 @@ async function sendTelegram(chatId, text) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text: text })
   });
-  if (!response.ok) {
-    throw new Error("Telegram API Error");
-  }
+  if (!response.ok) throw new Error("Telegram API Error");
 }
 
 async function forwardTelegram(fromChatId, messageId) {
@@ -39,9 +37,7 @@ async function forwardTelegram(fromChatId, messageId) {
       message_id: messageId
     })
   });
-  if (!response.ok) {
-    throw new Error("Telegram Forward Error");
-  }
+  if (!response.ok) throw new Error("Telegram Forward Error");
 }
 
 async function askGemini(text) {
@@ -55,9 +51,7 @@ async function askGemini(text) {
     })
   });
 
-  if (!response.ok) {
-    throw new Error("Gemini API Error");
-  }
+  if (!response.ok) throw new Error("Gemini API Error");
 
   const data = await response.json();
   if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
@@ -79,9 +73,7 @@ export default async function handler(req, res) {
     return res.status(405).send("Method Not Allowed");
   }
 
-  // ቁልፎቹ በ Vercel ላይ መኖራቸውን እዚህ ውስጥ ነው የምንፈትሸው (Syntax Error እንዳይፈጥር)
   if (!TELEGRAM_TOKEN || !GEMINI_API_KEY || !OWNER_CHAT_ID) {
-    console.error("Missing Environment Variables");
     return res.status(500).send("Configuration Error");
   }
 
@@ -94,7 +86,6 @@ export default async function handler(req, res) {
     const message = update.message;
     const chatId = message.chat.id;
     const firstName = message.from?.first_name || "Customer";
-    const username = message.from?.username ? "@" + message.from.username : "N/A";
 
     if (message.voice) {
       try {
@@ -102,7 +93,7 @@ export default async function handler(req, res) {
         await sendTelegram(OWNER_CHAT_ID, "🎤 New voice message from " + firstName);
         await sendTelegram(chatId, "⏳ የድምጽ መልእክትዎን ተቀብለናል! ማርሻሎም በቅርቡ ያነጋግርዎታል! 😊");
       } catch (err) {
-        await sendTelegram(chatId, "ይቅርታ፣ የድምፅ መልእክትዎን ማስተላለፍ አልተሳካም። እባክዎ በጽሑፍ ይሞክሩ። 🙏");
+        await sendTelegram(chatId, "ይቅርታ፣ የድምፅ መልእክትዎን ማስተላለፍ አልተሳካም።");
       }
       return res.status(200).send("OK");
     }
@@ -120,14 +111,12 @@ export default async function handler(req, res) {
         await sendTelegram(chatId, aiReply);
         await sendTelegram(OWNER_CHAT_ID, "💬 Customer: " + text + "\n🤖 Bot: " + aiReply);
       } catch (aiError) {
-        console.error("Processing Error:", aiError);
         await sendTelegram(chatId, "ይቅርታ፣ ጥያቄዎን ለማስተናገድ ትንሽ የቴክኒክ መስተጓጎል አጋጥሞኛል። እባክዎ ከጥቂት ደቂቃዎች ወደ ፊት ሞክሩ። 🙏");
       }
     }
 
     return res.status(200).send("OK");
   } catch (globalError) {
-    console.error("Global Error:", globalError);
     return res.status(200).send("OK");
   }
 }
