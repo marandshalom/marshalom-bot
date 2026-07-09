@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 
+// 🔐 የደኅንነት ቁልፎች ከ Environment Variables ብቻ ይነበባሉ
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID;
@@ -16,7 +17,7 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 ስለ ዋጋ: ምንም ቁጥር አትጥቀስ። "ዝርዝሩን ንገረኝ — ምርጥ ዋጋ እናዘጋጅልሃለን" በል።
 ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"በል።`;
 
-// 🛠️ ማስተካከያ #2: ቁልፎች ከሌሉ ኮዱ ወደ ፊት እንዳይሄድ እዚህ ላይ እንዲቆም ተደርጓል
+// 🛠️ ቁልፎች በሰርቨሩ ላይ መኖራቸውን አስቀድሞ ማረጋገጫ (ካልኖሩ እዚህ ላይ ይቆማል)
 if (!TELEGRAM_TOKEN || !GEMINI_API_KEY || !OWNER_CHAT_ID) {
   throw new Error("CRITICAL ERROR: Missing essential Environment Variables! Stopping deployment.");
 }
@@ -104,7 +105,6 @@ export default async function handler(req, res) {
 
     // 🔊 የድምፅ መልእክት አያያዝ
     if (message.voice) {
-      // 🛠️ ማስተካከያ #3: forwardTelegram በትክክለኛ try-catch ተከቧል
       try {
         await forwardTelegram(chatId, message.message_id);
         await sendTelegram(OWNER_CHAT_ID, `🎤 አዲስ የድምጽ መልእክት!\n👤 ከ: ${firstName} (${username})`);
@@ -132,7 +132,6 @@ export default async function handler(req, res) {
         
       } catch (aiError) {
         console.error("AI/Telegram Processing Error:", aiError);
-        // 🛠️ ማስተካከያ #1: የተቆረጠው የአማርኛ መልእክት ሙሉ በሙሉ ተስተካክሏል
         await sendTelegram(chatId, "ይቅርታ፣ ጥያቄዎን ለማስተናገድ ትንሽ የቴክኒክ መስተጓጎል አጋጥሞኛል። እባክዎ ከጥቂት ደቂቃዎች ወደ ፊት ሞክሩ። 🙏");
       }
     }
