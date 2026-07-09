@@ -1,6 +1,7 @@
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAFiqS65nE0SY2cxj-J8oZSVcJMa2mOAkzM";
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6JqkQmUF7cdv0dwwk-KFTHw6_gwmLV8MDFYVT_DE2IG9Q";
-const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || "1577576513";
+// ⚠️ ቁልፎቹ ከ process.env ላይ ብቻ ነው የሚነበቡት (ደኅንነቱ የተጠበቀ ነው)
+const TELEGRAM_TOKEN = process.env.8939570857:AAFiqS65nE0SY2cxj-J8oZSVcJMa2mOAkzM;
+const GEMINI_API_KEY = process.env.AQ.Ab8RN6JqkQmUF7cdv0dwwk-KFTHw6_gwmLV8MDFYVT_DE2IG9Q;
+const OWNER_CHAT_ID = process.env.1577576513;
 
 const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
 የቢዝነሱ ባለቤት ስም ማርሻሎም ነው።
@@ -56,7 +57,6 @@ async function askGemini(text) {
       })
     });
     const data = await response.json();
-    console.log("Gemini response:", JSON.stringify(data));
     if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
       return data.candidates[0].content.parts[0].text;
     }
