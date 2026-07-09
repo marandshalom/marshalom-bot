@@ -12,7 +12,7 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 3. የኔትወርክ ገጠማ — ለማንኛውም ቦታ
 4. የኦንላይን ገበያ ምርቶች ማድረስ
 ስለ ዋጋ: ምንም ቁጥር አትጥቀስ። "ዝርዝሩን ንገረኝ — ምርጥ ዋጋ እናዘጋጅልሃለን" በል።
-ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"`;
+ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"በል።`;
 
 async function sendTelegram(chatId, text) {
   try {
