@@ -15,8 +15,8 @@ async function sendTelegram(chatId, text) {
 
 async function askGemini(text) {
   try {
-    // 💡 መፍትሄ: v1beta የሚለውን ወደ v1 ቀይረነዋል - ይህም ለሁሉም የጌሚኒ ቁልፍ ይሰራል
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // 💡 የመጨረሻ መፍትሄ: ሊንኩን ሙሉ በሙሉ ቀይረነዋል
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
       method: "POST",
@@ -27,7 +27,7 @@ async function askGemini(text) {
     });
     
     const data = await response.json();
-    if (data.error) return `Error: ${data.error.message}`;
+    if (data.error) return `API Error: ${data.error.message}`;
     if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
       return data.candidates[0].content.parts[0].text;
     }
