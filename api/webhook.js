@@ -1,5 +1,5 @@
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
-const GEMINI_API_KEY = "AQ.Ab8RN6IdxAEUfpG0sE3s8MgFbPkZMLApkOEAnWlqiqrIBEwL7A"; 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY; 
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || "1577576513";
 
 const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
@@ -36,8 +36,7 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    // አዲሱን የቪዲዮ ማገናኛ (Gateway ሊንክ) በመጠቀም የክሬዴንሻል ስህተቱን ሙሉ በሙሉ ማለፍ
-    const url = `https://gateway.ai.cloudflare.com/v1/google-ai/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
       method: "POST",
