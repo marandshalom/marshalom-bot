@@ -36,7 +36,8 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // ማስተካከያ፦ አዲሱን የAQ ቁልፍ እንዲቀበል v1 የነበረውን ወደ v1beta ቀይረነዋል
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
       method: "POST",
