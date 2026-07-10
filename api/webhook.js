@@ -16,23 +16,12 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 
 async function sendTelegram(chatId, text) {
   try {
-    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text: text })
     });
-    return await res.json(); // የተላከውን መልእክት መረጃ ለመቀበል
-  } catch(e) { console.error("sendTelegram error:", e); return null; }
-}
-
-async function editTelegram(chatId, messageId, text) {
-  try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/editMessageText`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text })
-    });
-  } catch(e) { console.error("editTelegram error:", e); }
+  } catch(e) { console.error("sendTelegram error:", e); }
 }
 
 async function forwardTelegram(fromChatId, messageId) {
@@ -90,19 +79,12 @@ export default async function handler(req, res) {
     }
 
     if (message.text) {
-      // 💡 ፍጥነት ማስተካከያ፡ ለደንበኛው ወዲያውኑ "እየፃፍኩ ነው..." የሚል ምልክት ያሳያል
-      const waitingMsg = await sendTelegram(chatId, "⏳ ጥቂት ሰኮንዶች ይውሰድብኝ፣ እየመረመርኩ ነው...");
-      
       const aiReply = await askGemini(message.text);
       
-      if (waitingMsg && waitingMsg.result) {
-        // የቆያውን መልእክት በጌሚኒ እውነተኛ ምላሽ ይቀይረዋል (ይተካዋል)
-        await editTelegram(chatId, waitingMsg.result.message_id, aiReply);
-      } else {
-        await sendTelegram(chatId, aiReply);
-      }
+      // 1. ለደንበኛው መልሱን ይልካል
+      await sendTelegram(chatId, aiReply);
       
-      // ለአንተ ሪፖርት ይልካል
+      // 2. ለአንተ (ለባለቤቱ) ደንበኛው የጻፈውን እና AI የመለሰውን አንድ ላይ አጠቃሎ ይልክልሃል
       const reportText = `👤 ደንበኛ: ${firstName} (${username})\n💬 የጻፈው ጥያቄ: ${message.text}\n\n🤖 የ AI መልስ:\n${aiReply}`;
       await sendTelegram(OWNER_CHAT_ID, reportText);
     }
