@@ -36,10 +36,7 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    // ቅድም በትክክል የሰራው የ v1 ሊንክ እና gemini-3.5-flash ሞዴል
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-    
-    // የቋንቋ ስህተት እንዳይፈጠር መመሪያውን እና ጥያቄውን እዚህ እናዋህዳለን
     const combinedPrompt = `${SYSTEM_PROMPT}\n\nእባክህ በሚከተለው የደንበኛ ጥያቄ መሰረት በአማርኛ ብቻ ምላሽ ስጥ፦ ${text}`;
 
     const response = await fetch(url, {
@@ -51,14 +48,8 @@ async function askGemini(text) {
     });
     
     const data = await response.json();
-    console.log("Gemini raw response:", JSON.stringify(data));
-    
     if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
       return data.candidates[0].content.parts[0].text;
-    }
-    
-    if (data && data.error) {
-      console.error("Gemini API Error Detail:", data.error.message);
     }
     return "ይቅርታ፣ መስመሩ ስለተጨናነቀ ነው፤ እባክህ ጥቂት ቆይተህ እንደገና ሞክር! 🙏";
   } catch(e) {
@@ -89,8 +80,13 @@ export default async function handler(req, res) {
 
     if (message.text) {
       const aiReply = await askGemini(message.text);
+      
+      // 1. ለደንበኛው መልሱን ይልካል
       await sendTelegram(chatId, aiReply);
-      await sendTelegram(OWNER_CHAT_ID, `💬 ደንበኛ ጻፈ: ${message.text}\n👤 ${firstName} (${username})`);
+      
+      // 2. ለአንተ (ለባለቤቱ) ደንበኛው የጻፈውን እና AI የመለሰውን አንድ ላይ አጠቃሎ ይልክልሃል
+      const reportText = `👤 ደንበኛ: ${firstName} (${username})\n💬 የጻፈው ጥያቄ: ${message.text}\n\n🤖 የ AI መልስ:\n${aiReply}`;
+      await sendTelegram(OWNER_CHAT_ID, reportText);
     }
     return res.status(200).send("OK");
   } catch(err) {
