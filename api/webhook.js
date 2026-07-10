@@ -36,16 +36,17 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    // 💡 ማስተካከያ፦ gemini-1.5-flash-latest ተብሎ በትክክል ተስተካክሏል
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    // ቅድም በትክክል የሰራው የ v1 ሊንክ እና gemini-3.5-flash ሞዴል
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
+    // የቋንቋ ስህተት እንዳይፈጠር መመሪያውን እና ጥያቄውን እዚህ እናዋህዳለን
+    const combinedPrompt = `${SYSTEM_PROMPT}\n\nእባክህ በሚከተለው የደንበኛ ጥያቄ መሰረት በአማርኛ ብቻ ምላሽ ስጥ፦ ${text}`;
+
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        // በ v1beta ላይ ሲስተም ፕሮምፕት የሚቀመጥበት ትክክለኛው መዋቅር
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: text }] }]
+        contents: [{ role: "user", parts: [{ text: combinedPrompt }] }]
       })
     });
     
