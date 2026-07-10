@@ -1,18 +1,18 @@
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
-const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY || "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";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6JqkQmUF7cdv0dwwk-KFTHw6_gwmLV8MDFYVT_DE2IG9Q";
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || "1577576513";
 
 const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
 የቢዝነሱ ባለቤት ስም ማርሻሎም ነው።
 ቋንቋ: ደንበኛው በምን ቋንቋ ቢጽፍ (አማርኛ፣ እንግሊዝኛ፣ ኦሮምኛ፣ ትግርኛ) በዚያው ምላሽ ስጥ። ፈጽሞ ቋንቋ አትቀይር።
-ስብዕና: ተፈጥሯዊ፣ ሙቀት ያለው፣ ወዳጃዊ ሁን። እንደ ሮቦት አትመልስ።
+ስብዕና: ተፈጥሯዊ፣ ሙቀት ያለው፣ ወዳጃዊ ሁን። እንደ ሮቦት አትመልስ። ደንበኛው ብዙ ቢናገር ሙሉ መረጃ ስብስብ።
 አገልግሎቶቻችን:
-1. CCTV ካሜራ ገጠማ — ለማንኛውም ቦታ
+1. CCTV ካሜራ ገጠማ — ለማንኛውም ቦታ (ቤት፣ ቢዝነስ፣ ትምህርት ቤት፣ ሆቴል)
 2. CCTV ካሜራ ጥገና — ለማንኛውም ቦታ
-3. የኔትወርክ ገጠማ — ለማንኛውም ቦታ
+3. የኔትወርክ ገጠማ — ለካፌ፣ ትምህርት ቤት፣ ሆቴል፣ ቢዝነስ — ለማንኛውም
 4. የኦንላይን ገበያ ምርቶች ማድረስ
-ስለ ዋጋ: ምንም ቁጥር አትጥቀስ። "ዝርዝሩን ንገረኝ — ምርጥ ዋጋ እናዘጋጅልሃለን" በል።
-ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"`;
+ስለ ዋጋ (ፈጽሞ አትጣስ): ምንም ቁጥር አትጥቀስ። እንዲህ በል: "ዝርዝሩን ንገረኝ — ላንተ ምርጥ ዋጋ እና ቅናሽ እናዘጋጅልሃለን"። ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"
+ፈጽሞ እንዳታደርግ: ዋጋ ቁጥር አትጥቀስ፣ ቋንቋ አትቀይር፣ ደንበኛ ሳይጨርስ አትቸኩል`;
 
 async function sendTelegram(chatId, text) {
   try {
@@ -21,7 +21,7 @@ async function sendTelegram(chatId, text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text: text })
     });
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error("sendTelegram error:", e); }
 }
 
 async function forwardTelegram(fromChatId, messageId) {
@@ -31,30 +31,31 @@ async function forwardTelegram(fromChatId, messageId) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: OWNER_CHAT_ID, from_chat_id: fromChatId, message_id: messageId })
     });
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error("forwardTelegram error:", e); }
 }
 
-async function askClaude(text) {
+async function askGemini(text) {
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+    const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "x-api-key": CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: text }]
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: text }] }]
       })
     });
     const data = await response.json();
-    if (data && data.content && data.content[0]) return data.content[0].text;
+    console.log("Gemini raw response:", JSON.stringify(data));
+    if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+      return data.candidates[0].content.parts[0].text;
+    }
+    if (data && data.error) {
+      console.error("Gemini error:", data.error.message);
+    }
     return "ይቅርታ፣ እንደገና ይሞክሩ! 🙏";
   } catch(e) {
-    console.error(e);
+    console.error("askGemini error:", e);
     return "ይቅርታ፣ እንደገና ይሞክሩ! 🙏";
   }
 }
@@ -71,20 +72,22 @@ export default async function handler(req, res) {
     const chatId = message.chat.id;
     const firstName = message.from?.first_name || "ደንበኛ";
     const username = message.from?.username ? `@${message.from.username}` : "N/A";
+
     if (message.voice) {
       await forwardTelegram(chatId, message.message_id);
       await sendTelegram(OWNER_CHAT_ID, `🎤 ድምጽ!\n👤 ${firstName} (${username})`);
       await sendTelegram(chatId, "⏳ ድምጽ መልእክትዎን ተቀብለናል!\nባለቤቱ በቅርቡ ይደውሉልዎታል! 😊");
       return res.status(200).send("OK");
     }
+
     if (message.text) {
-      const aiReply = await askClaude(message.text);
+      const aiReply = await askGemini(message.text);
       await sendTelegram(chatId, aiReply);
       await sendTelegram(OWNER_CHAT_ID, `💬 ደንበኛ ጻፈ: ${message.text}\n👤 ${firstName} (${username})`);
     }
     return res.status(200).send("OK");
   } catch(err) {
-    console.error(err);
+    console.error("Handler error:", err);
     return res.status(200).send("OK");
   }
 }
