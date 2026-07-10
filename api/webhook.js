@@ -1,4 +1,3 @@
-// ማርሻ - ቁልፎቹን በVercel Dashboard ላይ ካስገባህ እዚህ ጋር በራስ-ሰር ያነባቸዋል
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "AQ.Ab8RN6Jt4_4B2VLdgEFk6D5MNLIFi-JZXef3qdKufxnNUuuwtQ";
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || "1577576513";
@@ -37,7 +36,6 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    // ማስተካከያ፡ ሞዴሉን ወደ gemini-1.5-flash ቀይረነዋል
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
@@ -55,14 +53,15 @@ async function askGemini(text) {
     if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
       return data.candidates[0].content.parts[0].text;
     }
+    
+    // ስህተት ካለ በኮንሶል ላይ ብቻ ይመዝገብ፤ ለደንበኛው ግን የጉግል ስህተት አይላክም
     if (data && data.error) {
       console.error("Gemini API Error Detail:", data.error.message);
-      return `የGemini ስህተት፡ ${data.error.message}`;
     }
-    return "ይቅርታ፣ እንደገና ይሞክሩ! 🙏";
+    return "ይቅርታ፣ መስመሩ ስለተጨናነቀ ነው፤ እባክህ ጥቂት ቆይተህ እንደገና ሞክር! 🙏";
   } catch(e) {
     console.error("askGemini error:", e);
-    return "ይቅርታ፣ እንደገና ይሞክሩ! 🙏";
+    return "ይቅርታ፣ መስመሩ ስለተጨናነቀ ነው፤ እባክህ ጥቂት ቆይተህ እንደገና ሞክር! 🙏";
   }
 }
 
