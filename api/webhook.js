@@ -1,5 +1,6 @@
+// ማርሻ - ቁልፎቹን በVercel Dashboard ላይ ካስገባህ እዚህ ጋር በራስ-ሰር ያነባቸዋል
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6Jt4_4B2VLdgEFk6D5MNLIFi-JZXef3qdKufxnNUuuwtQ";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "AQ.Ab8RN6Jt4_4B2VLdgEFk6D5MNLIFi-JZXef3qdKufxnNUuuwtQ";
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || "1577576513";
 
 const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
@@ -36,7 +37,9 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+    // ማስተካከያ፡ ሞዴሉን ወደ gemini-1.5-flash ቀይረነዋል
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -45,13 +48,16 @@ async function askGemini(text) {
         contents: [{ role: "user", parts: [{ text: text }] }]
       })
     });
+    
     const data = await response.json();
     console.log("Gemini raw response:", JSON.stringify(data));
+    
     if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
       return data.candidates[0].content.parts[0].text;
     }
     if (data && data.error) {
-      console.error("Gemini error:", data.error.message);
+      console.error("Gemini API Error Detail:", data.error.message);
+      return `የGemini ስህተት፡ ${data.error.message}`;
     }
     return "ይቅርታ፣ እንደገና ይሞክሩ! 🙏";
   } catch(e) {
