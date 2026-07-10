@@ -36,17 +36,16 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    // 💡 መፍትሄ፡ የተረጋጋውን የ v1beta ሊንክ እና gemini-1.5-flashን እንጠቀማለን
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // 💡 ማስተካከያ፦ gemini-1.5-flash-latest ተብሎ በትክክል ተስተካክሏል
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
     
-    // 💡 ዋናው ሚስጥር፡ የሲስተም መመሪያውን እና የደንበኛውን ጥያቄ እዚህ ጋር አዋሃድን (ስህተት እንዳይፈጠር)
-    const combinedPrompt = `${SYSTEM_PROMPT}\n\nየደንበኛ ጥያቄ፡ ${text}`;
-
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: combinedPrompt }] }]
+        // በ v1beta ላይ ሲስተም ፕሮምፕት የሚቀመጥበት ትክክለኛው መዋቅር
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: text }] }]
       })
     });
     
