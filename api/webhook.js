@@ -1,7 +1,5 @@
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY; 
-
-const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ረዳት። አማርኛ ብቻ ተጠቀም። አገልግሎቶች: CCTV፣ ኔትወርክ፣ ኦንላይን ገበያ። ዋጋ አትጥቀስ።`;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
 async function sendTelegram(chatId, text) {
   try {
@@ -15,23 +13,27 @@ async function sendTelegram(chatId, text) {
 
 async function askGemini(text) {
   try {
-    // 💡 የመጨረሻ መፍትሄ: ሊንኩን ሙሉ በሙሉ ቀይረነዋል
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // 💡 መፍትሄ: መጀመሪያ የሚገኙትን ሞዴሎች እንፈትሽ
+    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
+    const listRes = await fetch(listUrl);
+    const listData = await listRes.json();
     
-    const response = await fetch(url, {
+    // ትክክለኛውን ሞዴል ከዝርዝሩ ውስጥ ይፈልጋል
+    const model = listData.models.find(m => m.name === "models/gemini-1.5-flash") ? "models/gemini-1.5-flash" : "models/gemini-pro";
+    
+    const generateUrl = `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    
+    const response = await fetch(generateUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `${SYSTEM_PROMPT}\n\nደንበኛ፡ ${text}` }] }]
+        contents: [{ role: "user", parts: [{ text: `አንተ የShalom Technology ረዳት ነህ። ደንበኛው የጻፈውን በአማርኛ መልስ። ደንበኛው፡ ${text}` }] }]
       })
     });
     
     const data = await response.json();
     if (data.error) return `API Error: ${data.error.message}`;
-    if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      return data.candidates[0].content.parts[0].text;
-    }
-    return "መልስ የለም።";
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "መልስ የለም።";
   } catch(e) {
     return `System Error: ${e.message}`;
   }
