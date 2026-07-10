@@ -7,27 +7,21 @@ export default async function handler(req, res) {
   if (!message?.text) return res.status(200).send("OK");
 
   try {
-    // 💡 መፍትሄ: ሞዴል ስም ሳይጠቀስ 'gemini-pro' ን በ v1beta ይጠራል
-    // ይህ በሁሉም ኤፒአይ ቁልፍ ላይ በብዛት የሚሰራው ነው።
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+    // 1. መጀመሪያ ያለውን የሞዴል ዝርዝር እንጠይቅ
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
+    const listData = await listRes.json();
     
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `አንተ የShalom Technology ረዳት ነህ። በአማርኛ መልስ። ደንበኛ፡ ${message.text}` }] }]
-      })
-    });
+    // 2. የሚገኙትን ሞዴሎች ስም ብቻ እናውጣ
+    const modelNames = listData.models ? listData.models.map(m => m.name).join(", ") : "ምንም ሞዴል አልተገኘም";
 
-    const data = await response.json();
-    
-    // ስህተት ቢኖር በዝርዝር ያሳየናል
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || `ስህተት ተፈጠረ: ${JSON.stringify(data.error || "የማይታወቅ ስህተት")}`;
-
+    // 3. ዝርዝሩን ለቴሌግራም ላክ
     await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: message.chat.id, text: reply })
+      body: JSON.stringify({ 
+        chat_id: message.chat.id, 
+        text: `🤖 ያንተ የኤፒአይ ቁልፍ የሚያያቸው ሞዴሎች እነዚህ ናቸው፦\n\n${modelNames}` 
+      })
     });
   } catch (e) {
     console.error(e);
