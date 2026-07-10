@@ -3,15 +3,12 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(200).send("OK");
-  
   const message = req.body?.message;
   if (!message?.text) return res.status(200).send("OK");
 
   try {
-    // 💡 መፍትሄ: ሞዴል ስም ሳይጠቀስ 'gemini-1.5-flash-latest' የሚል ስም እንጠቀም (ይህ በብዙ አካውንቶች ይሰራል)
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
-    
-    const response = await fetch(url, {
+    // 💡 መፍትሄ: v1 ላይ በቀጥታ 'models/gemini-1.5-flash' ን ጥራ
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -20,14 +17,7 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    
-    // ስህተት ካለ በቴሌግራም በግልጽ እንዲታይ እናደርጋለን
-    let reply = "";
-    if (data.error) {
-        reply = `❌ Error: ${data.error.message}`;
-    } else {
-        reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "መልስ አልተገኘም።";
-    }
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || `ስህተት ተፈጠረ: ${JSON.stringify(data.error || "unknown")}`;
 
     await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
@@ -37,6 +27,5 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error(e);
   }
-  
   return res.status(200).send("OK");
 }
