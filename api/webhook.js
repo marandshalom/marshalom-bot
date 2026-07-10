@@ -1,6 +1,6 @@
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID;
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
+const GEMINI_API_KEY = "AQ.Ab8RN6IdxAEUfpG0sE3s8MgFbPkZMLApkOEAnWlqiqrIBEwL7A"; 
+const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || "1577576513";
 
 const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
 የቢዝነሱ ባለቤት ስም ማርሻሎም ነው።
