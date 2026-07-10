@@ -1,13 +1,6 @@
 {
-  "name": "marshalom-ai-bot",
-  "version": "1.0.0",
-  "description": "Marshalom AI - Shalom Technology Telegram Bot",
-  "main": "api/index.js",
   "type": "module",
-  "scripts": {
-    "start": "node api/index.js"
-  },
-  "dependencies": {
-    "node-fetch": "^3.3.2"
+  "engines": {
+    "node": "20.x"
   }
 }
