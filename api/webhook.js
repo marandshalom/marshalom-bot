@@ -8,8 +8,10 @@ export default async function handler(req, res) {
   if (!message?.text) return res.status(200).send("OK");
 
   try {
-    // በጣም ቀላል የሆነ ጥሪ
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    // 💡 መፍትሄ: ሞዴል ስም ሳይጠቀስ 'gemini-1.5-flash-latest' የሚል ስም እንጠቀም (ይህ በብዙ አካውንቶች ይሰራል)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -18,7 +20,14 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "ይቅርታ፣ አሁን መልስ መስጠት አልቻልኩም።";
+    
+    // ስህተት ካለ በቴሌግራም በግልጽ እንዲታይ እናደርጋለን
+    let reply = "";
+    if (data.error) {
+        reply = `❌ Error: ${data.error.message}`;
+    } else {
+        reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "መልስ አልተገኘም።";
+    }
 
     await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
