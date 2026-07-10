@@ -21,7 +21,7 @@ async function sendTelegram(chatId, text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text: text })
     });
-    return await res.json(); // የተላከውን መልእክት መረጃ ለመቀበል
+    return await res.json();
   } catch(e) { console.error("sendTelegram error:", e); return null; }
 }
 
@@ -47,7 +47,8 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // ⚡ ፍጥነቱን ለመጨመር ሞዴሉን ወደ ማያስበው gemini-2.0-flash ቀይረነዋል!
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
     const combinedPrompt = `${SYSTEM_PROMPT}\n\nእባክህ በሚከተለው የደንበኛ ጥያቄ መሰረት በአማርኛ ብቻ ምላሽ ስጥ፦ ${text}`;
 
     const response = await fetch(url, {
@@ -90,19 +91,16 @@ export default async function handler(req, res) {
     }
 
     if (message.text) {
-      // 💡 ፍጥነት ማስተካከያ፡ ለደንበኛው ወዲያውኑ "እየፃፍኩ ነው..." የሚል ምልክት ያሳያል
-      const waitingMsg = await sendTelegram(chatId, "⏳ ጥቂት ሰኮንዶች ይውሰድብኝ፣ እየመረመርኩ ነው...");
+      const waitingMsg = await sendTelegram(chatId, "⏳ ጥቂት ሰኮንዶች ይውሰድብኝ...");
       
       const aiReply = await askGemini(message.text);
       
       if (waitingMsg && waitingMsg.result) {
-        // የቆያውን መልእክት በጌሚኒ እውነተኛ ምላሽ ይቀይረዋል (ይተካዋል)
         await editTelegram(chatId, waitingMsg.result.message_id, aiReply);
       } else {
         await sendTelegram(chatId, aiReply);
       }
       
-      // ለአንተ ሪፖርት ይልካል
       const reportText = `👤 ደንበኛ: ${firstName} (${username})\n💬 የጻፈው ጥያቄ: ${message.text}\n\n🤖 የ AI መልስ:\n${aiReply}`;
       await sendTelegram(OWNER_CHAT_ID, reportText);
     }
