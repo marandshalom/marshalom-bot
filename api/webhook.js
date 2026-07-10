@@ -36,7 +36,8 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // አዲሱን የቪዲዮ ማገናኛ (Gateway ሊንክ) በመጠቀም የክሬዴንሻል ስህተቱን ሙሉ በሙሉ ማለፍ
+    const url = `https://gateway.ai.cloudflare.com/v1/google-ai/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
       method: "POST",
