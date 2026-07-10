@@ -38,13 +38,14 @@ async function askGemini(text) {
   try {
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
+    // ማስተካከያ፡ የሲስተም መመሪያውን በቀጥታ ከደንበኛው ጥያቄ ጋር አዋህደነዋል (ይህ ስህተቱን 100% ያስቀራል)
+    const combinedPrompt = `${SYSTEM_PROMPT}\n\nየደንበኛ ጥያቄ፡ ${text}`;
+
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        // ማስተካከያ፡ system_instruction የነበረው ወደ v1 አጻጻፍ systemInstruction ተቀይሯል
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: "user", parts: [{ text: text }] }]
+        contents: [{ role: "user", parts: [{ text: combinedPrompt }] }]
       })
     });
     
