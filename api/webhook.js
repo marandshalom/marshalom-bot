@@ -1,36 +1,114 @@
-const TELEGRAM_TOKEN = "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-// 💡 ከዝርዝርህ ውስጥ የተረጋጋውን ሞዴል መረጥን
-const MODEL_NAME = "models/gemini-2.0-flash";
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY; 
+const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || "1577576513";
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(200).send("OK");
-  const message = req.body?.message;
-  if (!message?.text) return res.status(200).send("OK");
+const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
+የቢዝነሱ ባለቤት ስም ማርሻሎም ነው።
+ቋንቋ: ደንበኛው በምን ቋንቋ ቢጽፍ (አማርኛ፣ እንግሊዝኛ፣ ኦሮምኛ፣ ትግርኛ) በዚያው ምላሽ ስጥ። ፈጽሞ ቋንቋ አትቀይር።
+ስብዕና: ተፈጥሯዊ፣ ሙቀት ያለው፣ ወዳጃዊ ሁን። እንደ ሮቦት አትመልስ። ደንበኛው ብዙ ቢናገር ሙሉ መረጃ ስብስብ።
+አገልግሎቶቻችን:
+1. CCTV ካሜራ ገጠማ — ለማንኛውም ቦታ (ቤት፣ ቢዝነስ፣ ትምህርት ቤት፣ ሆቴል)
+2. CCTV ካሜራ ጥገና — ለማንኛውም ቦታ
+3. የኔትወርክ ገጠማ — ለካፌ፣ ትምህርት ቤት፣ ሆቴል፣ ቢዝነስ — ለማንኛውም
+4. የኦንላይን ገበያ ምርቶች ማድረስ
+ስለ ዋጋ (ፈጽሞ አትጣስ): ምንም ቁጥር አትጥቀስ። እንዲህ በል: "ዝርዝሩን ንገረኝ — ላንተ ምርጥ ዋጋ እና ቅናሽ እናዘጋጅልሃለን"። ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"
+ፈጽሞ እንዳታደርግ: ዋጋ ቁጥር አትጥቀስ፣ ቋንቋ አትቀይር፣ ደንበኛ ሳይጨርስ አትቸኩል`;
 
+async function sendTelegram(chatId, text) {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
-    
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: text })
+    });
+    return await res.json(); // የተላከውን መልእክት መረጃ ለመቀበል
+  } catch(e) { console.error("sendTelegram error:", e); return null; }
+}
+
+async function editTelegram(chatId, messageId, text) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/editMessageText`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text })
+    });
+  } catch(e) { console.error("editTelegram error:", e); }
+}
+
+async function forwardTelegram(fromChatId, messageId) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: OWNER_CHAT_ID, from_chat_id: fromChatId, message_id: messageId })
+    });
+  } catch(e) { console.error("forwardTelegram error:", e); }
+}
+
+async function askGemini(text) {
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const combinedPrompt = `${SYSTEM_PROMPT}\n\nእባክህ በሚከተለው የደንበኛ ጥያቄ መሰረት በአማርኛ ብቻ ምላሽ ስጥ፦ ${text}`;
+
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `አንተ የShalom Technology ረዳት ነህ። አማርኛ ብቻ ተጠቀም። ደንበኛ፡ ${message.text}` }] }]
+        contents: [{ role: "user", parts: [{ text: combinedPrompt }] }]
       })
     });
-
-    const data = await response.json();
     
-    // መልሱን ያወጣል ወይም ስህተቱን በግልጽ ያሳያል
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || `ስህተት: ${JSON.stringify(data.error?.message)}`;
-
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: message.chat.id, text: reply })
-    });
-  } catch (e) {
-    console.error(e);
+    const data = await response.json();
+    if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+      return data.candidates[0].content.parts[0].text;
+    }
+    return "ይቅርታ፣ መስመሩ ስለተጨናነቀ ነው፤ እባክህ ጥቂት ቆይተህ እንደገና ሞክር! 🙏";
+  } catch(e) {
+    console.error("askGemini error:", e);
+    return "ይቅርታ፣ መስመሩ ስለተጨናነቀ ነው፤ እባክህ ጥቂት ቆይተህ እንደገና ሞክር! 🙏";
   }
-  return res.status(200).send("OK");
+}
+
+export const config = { api: { bodyParser: true } };
+
+export default async function handler(req, res) {
+  if (req.method === "GET") return res.status(200).send("Marshalom AI Bot is running! 🤖");
+  if (req.method !== "POST") return res.status(200).send("OK");
+  try {
+    const update = req.body;
+    if (!update || !update.message) return res.status(200).send("OK");
+    const message = update.message;
+    const chatId = message.chat.id;
+    const firstName = message.from?.first_name || "ደንበኛ";
+    const username = message.from?.username ? `@${message.from.username}` : "N/A";
+
+    if (message.voice) {
+      await forwardTelegram(chatId, message.message_id);
+      await sendTelegram(OWNER_CHAT_ID, `🎤 ድምጽ!\n👤 ${firstName} (${username})`);
+      await sendTelegram(chatId, "⏳ ድምጽ መልእክትዎን ተቀብለናል!\nባለቤቱ በቅርቡ ይደውሉልዎታል! 😊");
+      return res.status(200).send("OK");
+    }
+
+    if (message.text) {
+      // 💡 ፍጥነት ማስተካከያ፡ ለደንበኛው ወዲያውኑ "እየፃፍኩ ነው..." የሚል ምልክት ያሳያል
+      const waitingMsg = await sendTelegram(chatId, "⏳ ጥቂት ሰኮንዶች ይውሰድብኝ፣ እየመረመርኩ ነው...");
+      
+      const aiReply = await askGemini(message.text);
+      
+      if (waitingMsg && waitingMsg.result) {
+        // የቆያውን መልእክት በጌሚኒ እውነተኛ ምላሽ ይቀይረዋል (ይተካዋል)
+        await editTelegram(chatId, waitingMsg.result.message_id, aiReply);
+      } else {
+        await sendTelegram(chatId, aiReply);
+      }
+      
+      // ለአንተ ሪፖርት ይልካል
+      const reportText = `👤 ደንበኛ: ${firstName} (${username})\n💬 የጻፈው ጥያቄ: ${message.text}\n\n🤖 የ AI መልስ:\n${aiReply}`;
+      await sendTelegram(OWNER_CHAT_ID, reportText);
+    }
+    return res.status(200).send("OK");
+  } catch(err) {
+    console.error("Handler error:", err);
+    return res.status(200).send("OK");
+  }
 }
