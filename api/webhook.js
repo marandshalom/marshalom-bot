@@ -1,5 +1,7 @@
 const TELEGRAM_TOKEN = "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// 💡 ከዝርዝርህ ውስጥ የተረጋጋውን ሞዴል መረጥን
+const MODEL_NAME = "models/gemini-2.0-flash";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(200).send("OK");
@@ -7,21 +9,25 @@ export default async function handler(req, res) {
   if (!message?.text) return res.status(200).send("OK");
 
   try {
-    // 1. መጀመሪያ ያለውን የሞዴል ዝርዝር እንጠይቅ
-    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`);
-    const listData = await listRes.json();
+    const url = `https://generativelanguage.googleapis.com/v1beta/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`;
     
-    // 2. የሚገኙትን ሞዴሎች ስም ብቻ እናውጣ
-    const modelNames = listData.models ? listData.models.map(m => m.name).join(", ") : "ምንም ሞዴል አልተገኘም";
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: `አንተ የShalom Technology ረዳት ነህ። አማርኛ ብቻ ተጠቀም። ደንበኛ፡ ${message.text}` }] }]
+      })
+    });
 
-    // 3. ዝርዝሩን ለቴሌግራም ላክ
+    const data = await response.json();
+    
+    // መልሱን ያወጣል ወይም ስህተቱን በግልጽ ያሳያል
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || `ስህተት: ${JSON.stringify(data.error?.message)}`;
+
     await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        chat_id: message.chat.id, 
-        text: `🤖 ያንተ የኤፒአይ ቁልፍ የሚያያቸው ሞዴሎች እነዚህ ናቸው፦\n\n${modelNames}` 
-      })
+      body: JSON.stringify({ chat_id: message.chat.id, text: reply })
     });
   } catch (e) {
     console.error(e);
