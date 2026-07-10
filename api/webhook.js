@@ -1,5 +1,5 @@
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6ITNbjVFRyJFl2oKhlLl-EyM3-WDM1ddu7JilsugZSNMQ";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6J1KRCsmz5L-PnbfHwYlWa7IM_1y_CGA28Rg3v2geU5Pw";
 const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || "1577576513";
 
 const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
