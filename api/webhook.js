@@ -36,14 +36,14 @@ async function forwardTelegram(fromChatId, messageId) {
 
 async function askGemini(text) {
   try {
-    // ማስተካከያ፡ ሊንኩ ወደ v1 ተመልሷል፣ ሞዴሉ ወደ gemini-2.5-flash ተቀይሯል
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        // ማስተካከያ፡ system_instruction የነበረው ወደ v1 አጻጻፍ systemInstruction ተቀይሯል
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{ role: "user", parts: [{ text: text }] }]
       })
     });
