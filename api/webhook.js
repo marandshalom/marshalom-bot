@@ -1,3 +1,65 @@
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8939570857:AAEgOw_G8LAPAZAIIbi4NueilJnbJkyUOd4";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY; 
+const OWNER_CHAT_ID = process.env.OWNER_CHAT_ID || "1577576513";
+
+const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology ኦፊሴላዊ ዲጂታል ረዳት።
+የቢዝነሱ ባለቤት ስም ማርሻሎም ነው።
+ቋንቋ: ደንበኛው በምን ቋንቋ ቢጽፍ (አማርኛ፣ እንግሊዝኛ፣ ኦሮምኛ፣ ትግርኛ) በዚያው ምላሽ ስጥ። ፈጽሞ ቋንቋ አትቀይር።
+ስብዕና: ተፈጥሯዊ፣ ሙቀት ያለው፣ ወዳጃዊ ሁን። እንደ ሮቦት አትመልስ። ደንበኛው ብዙ ቢናገር ሙሉ መረጃ ስብስብ።
+አገልግሎቶቻችን:
+1. CCTV ካሜራ ገጠማ — ለማንኛውም ቦታ (ቤት፣ ቢዝነስ፣ ትምህርት ቤት፣ ሆቴል)
+2. CCTV ካሜራ ጥገና — ለማንኛውም ቦታ
+3. የኔትወርክ ገጠማ — ለካፌ፣ ትምህርት ቤት፣ ሆቴል፣ ቢዝነስ — ለማንኛውም
+4. የኦንላይን ገበያ ምርቶች ማድረስ
+ስለ ዋጋ (ፈጽሞ አትጣስ): ምንም ቁጥር አጥቅስ። እንዲህ በል: "ዝርዝሩን ንገረኝ — ላንተ ምርጥ ዋጋ እና ቅናሽ እናዘጋጅልሃለን"። ሁሉም ሲሟላ: "ማርሻሎም በቅርቡ ይደውልልሃል"
+ፈጽሞ እንዳታደርግ: ዋጋ ቁጥር አትጥቀስ፣ ቋንቋ አትቀይር፣ ደንበኛ ሳይጨርስ አትቸኩል`;
+
+async function sendTelegram(chatId, text) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: text })
+    });
+  } catch(e) { console.error("sendTelegram error:", e); }
+}
+
+async function forwardTelegram(fromChatId, messageId) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: OWNER_CHAT_ID, from_chat_id: fromChatId, message_id: messageId })
+    });
+  } catch(e) { console.error("forwardTelegram error:", e); }
+}
+
+async function askGemini(text) {
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const combinedPrompt = `${SYSTEM_PROMPT}\n\nእባክህ በሚከተለው የደንበኛ ጥያቄ መሰረት በአማርኛ ብቻ ምላሽ ስጥ፦ ${text}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: combinedPrompt }] }]
+      })
+    });
+    
+    const data = await response.json();
+    if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+      return data.candidates[0].content.parts[0].text;
+    }
+    return "🌟 ማርሻሎም (Marshalom) የቴክኖሎጂ ረዳት 🌟\nሰላም! መልእክትዎን ስላደረሱን እናመሰግናለን። አሁን ላይ እጅግ በጣም ብዙ ጥያቄዎችን በማስተናገድ ላይ ስለሆንን፣ ትክክለኛ ምላሽ ለእርስዎ ለመስጠት የ Shalom Technology የቴክኖሎጂ አገልግሎት ቡድን ቀጥተኛ ፍቃድ በመጠበቅ ላይ እገኛለሁ።\n⚠️ ጉዳይዎ አስቸኳይ ከሆነ 'አስቸኳይ' ብለው ይጻፉ።";
+  } catch(e) {
+    console.error("askGemini error:", e);
+    return "🌟 ማርሻሎም (Marshalom) የቴክኖሎጂ ረዳት 🌟\nሰላም! መልእክትዎን ስላደረሱን እናመሰግናለን። አሁን ላይ እጅግ በጣም ብዙ ጥያቄዎችን በማስተናገድ ላይ ስለሆንን፣ ትክክለኛ ምላሽ ለእርስዎ ለመስጠት የ Shalom Technology የቴክኖሎጂ አገልግሎት ቡድን ቀጥተኛ ፍቃድ በመጠበቅ ላይ እገኛለሁ።\n⚠️ ጉዳይዎ አስቸኳይ ከሆነ 'አስቸኳይ' ብለው ይጻፉ።";
+  }
+}
+
+export const config = { api: { bodyParser: true } };
+
 export default async function handler(req, res) {
   if (req.method === "GET") return res.status(200).send("Marshalom AI Bot is running! 🤖");
   if (req.method !== "POST") return res.status(200).send("OK");
@@ -9,12 +71,6 @@ export default async function handler(req, res) {
     const firstName = message.from?.first_name || "ደንበኛ";
     const username = message.from?.username ? `@${message.from.username}` : "N/A";
 
-    // 1. አዲሱ መጨመር: /start ሲላክ
-    if (message.text === "/start") {
-      await sendTelegram(chatId, "✨ እንኳን ደህና መጡ ወደ ማርሻሎም (Marshalom)! ✨\n📢 ቻናላችንን ይቀላቀሉ፡ https://t.me/cctvcamera2018 \n📞 ለበለጠ መረጃ፡ 0931556590");
-      return res.status(200).send("OK");
-    }
-
     if (message.voice) {
       await forwardTelegram(chatId, message.message_id);
       await sendTelegram(OWNER_CHAT_ID, `🎤 ድምጽ!\n👤 ${firstName} (${username})`);
@@ -25,14 +81,10 @@ export default async function handler(req, res) {
     if (message.text) {
       const aiReply = await askGemini(message.text);
       
-      // 2. አዲሱ መጨመር: AI ካልሰራ (ማለትም "ይቅርታ..." የሚለው ሲመለስ) የ"አስቸኳይ" መልእክት ላክ
-      if (aiReply.includes("ይቅርታ")) {
-        await sendTelegram(chatId, "🌟 ማርሻሎም (Marshalom) የቴክኖሎጂ ረዳት 🌟\nሰላም! መልእክትዎን ተቀብለናል፣ ቡድናችን በቅርቡ ምላሽ ይሰጥዎታል። 🙏\n\n⚠️ ጉዳይዎ አስቸኳይ ከሆነ 'አስቸኳይ' ብለው ይጻፉ።");
-      } else {
-        await sendTelegram(chatId, aiReply);
-        const reportText = `👤 ደንበኛ: ${firstName} (${username})\n💬 የጻፈው ጥያቄ: ${message.text}\n\n🤖 የ AI መልስ:\n${aiReply}`;
-        await sendTelegram(OWNER_CHAT_ID, reportText);
-      }
+      await sendTelegram(chatId, aiReply);
+      
+      const reportText = `👤 ደንበኛ: ${firstName} (${username})\n💬 የጻፈው ጥያቄ: ${message.text}\n\n🤖 የ AI መልስ:\n${aiReply}`;
+      await sendTelegram(OWNER_CHAT_ID, reportText);
     }
     return res.status(200).send("OK");
   } catch(err) {
