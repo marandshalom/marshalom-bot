@@ -77,7 +77,6 @@ async function askGemini(text) {
 
 // ––––– SERVERLESS HANDLER –––––
 export default async function handler(req, res) {
-  // Health check
   if (req.method === 'GET') {
     return res.status(200).send('Marshalom AI Bot is running! 🤖');
   }
@@ -98,10 +97,8 @@ export default async function handler(req, res) {
 
     // –––– OWNER REPLIES ––––
     if (isOwner) {
-      // If the owner replies to a forwarded message, send that reply to the original customer
       if (message.reply_to_message) {
         const replied = message.reply_to_message;
-        // Check if the replied message was forwarded from a user
         let targetChatId = null;
         if (replied.forward_from) {
           targetChatId = replied.forward_from.id;
@@ -109,16 +106,14 @@ export default async function handler(req, res) {
           targetChatId = replied.forward_from_chat.id;
         }
         if (targetChatId && message.text) {
-          await sendTelegram(targetChatId, `📩 *Reply from Owner:*\n${message.text}`);
+          await sendTelegram(targetChatId, `📩 Reply from Owner:\n${message.text}`);
           await sendTelegram(OWNER_CHAT_ID, `✅ Your reply was sent to the customer.`);
           return res.status(200).send('OK');
         } else {
-          // If it's not a forwarded message, we ignore or send a help message
           await sendTelegram(OWNER_CHAT_ID, "ℹ️ Reply to a forwarded customer message to send a reply.");
           return res.status(200).send('OK');
         }
       } else {
-        // Owner sent a normal message (not a reply) – we can ignore or show help
         if (message.text === '/start') {
           await sendTelegram(OWNER_CHAT_ID, "👋 You are the owner. Reply to any forwarded customer message to answer them.");
         }
@@ -130,6 +125,7 @@ export default async function handler(req, res) {
 
     // /start
     if (message.text === '/start') {
+      await forwardTelegram(chatId, message.message_id);
       const welcome = '✨ እንኳን ደህና መጡ ወደ ማርሻሎም (Marshalom)! ✨\n📢 ቻናላችንን ይቀላቀሉ፡ https://t.me/cctvcamera2018 \n📞 ለበለጠ መረጃ፡ 0931556590';
       await sendTelegram(chatId, welcome);
       await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n📝 Command: /start\n🤖 Reply: ${welcome}`);
@@ -147,6 +143,7 @@ export default async function handler(req, res) {
 
     // Text
     if (message.text) {
+      await forwardTelegram(chatId, message.message_id);
       const aiReply = await askGemini(message.text);
       let finalReply = aiReply;
       if (aiReply === 'busy') {
