@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     if (message.text) {
       const aiReply = await askGemini(message.text);
       if (aiReply === "busy") {
-        await sendTelegram(chatId, "🌟 ማርሻሎም (Marshalom) የቴክኖሎጂ ረዳት 🌟\nሰላም! መልእክትዎን ስላደረሱን እናመሰግናለን። 🙏\nአሁን ላይ እጅግ በጣም ብዙ ጥያቄዎችን በማስተናገድ ላይ ስለሆንን፣ ትክክለኛ ምላሽ ለእርስዎ ለመስጠት የ Shalom Technology የቴክኖሎጂ አገልግሎት ቡድን ቀጥተኛ ፍቃድ በመጠበቅ ላይ እገኛለሁ። ⏳\nአትጨነቁ! መልእክትዎ በአስተማማኝ ሁኔታ ተይዟል። 🤝✨\n⚠️ ጉዳይዎ አስቸኳይ ከሆነ፣ ይህን ቅጽ በመከተል ይላኩልን፦\n\nአስቸኳይ ብለው ይጻፉ።\nየችግሩን ወይም የጥያቄዎን ዝርዝር በአጭሩ ይግለጹ።\n(ምሳሌ፦ አስቸኳይ፣ ካሜራዬ አይሰራም) 🚨\nማሳሰቢያ፦ ይህንን መልእክት ሲልኩ ማርሻሎም በቀጥታ በግል ስልኩ የጽሁፍ መልእክት (SMS) ደርሶት፣ በአጭር ጊዜ ውስጥ እራሱ ይደውልልዎታል! 📱");
+        await sendTelegram(chatId, "🌟 ማርሻሎም (Marshalom) የቴክኖሎጂ ረዳት 🌟\nሰላም! መልእክትዎን ስላደረሱን እናመሰግናለን። 🙏\nአሁን ላይ እጅግ በጣም ብዙ ጥያቄዎችን በማስተናገድ ላይ ስለሆንን፣ ትክክለኛ ምላሽ ለእርስዎ ለመስጠት የ Shalom Technology  ፍቃድ በመጠበቅ ላይ እገኛለሁ። ⏳\nአትጨነቁ! መልእክትዎ በአስተማማኝ ሁኔታ ተይዟል። 🤝✨\n⚠️ ጉዳይዎ አስቸኳይ ከሆነ፣ ይህን ቅጽ በመከተል ይላኩልን፦\n\nአስቸኳይ ብለው ይጻፉ።\nየችግሩን ወይም የጥያቄዎን ዝርዝር በአጭሩ ይግለጹ።\n(ምሳሌ፦ አስቸኳይ፣ ካሜራዬ አይሰራም ወይም ሌላ... ) 🚨\nማሳሰቢያ፦ ይህንን የእርሶን ጉዳይ በመረዳት በቀጥታ ወደ ማርሻሎም የግል  (SMS) እልካለው ። ደርሶት፣ በአጭር ጊዜ ውስጥ እራሱ ይደውልልዎታል! 📱");
       } else {
         await sendTelegram(chatId, aiReply);
         await sendTelegram(OWNER_CHAT_ID, `👤 ደንበኛ: ${message.from.first_name}\n💬 ጥያቄ: ${message.text}\n\n🤖 መልስ: ${aiReply}`);
