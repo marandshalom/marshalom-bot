@@ -158,7 +158,7 @@ export default async function handler(req, res) {
     // Voice
     if (message.voice) {
       await forwardTelegram(chatId, message.message_id);
-      const reply = '⏳ መልእክትዎ ደርሷል፣ ማርሻሎም በቅርቡ ይደውልልዎታል';
+      const reply = 'hhhhjjjjjjjjjjjjjjjሷል፣ ማርሻሎም በቅርቡ ይደውልልዎታል';
       await sendTelegram(chatId, reply);
       await sendCustomerToOwner(message.from, '🎤 Voice message', reply);
       return res.status(200).send('OK');
