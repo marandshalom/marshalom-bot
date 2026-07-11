@@ -10,7 +10,7 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 አገልግሎቶቻችን: CCTV ካሜራ (ገጠማ/ጥገና), የኔትወርክ ገጠማ, የኦንላይን ገበያ ምርቶች ማድረስ።
 ስለ ዋጋ: "ዝርዝሩን ንገረኝ — ላንተ ምርጥ ዋጋ እና ቅናሽ እናዘጋጅልሃለን" በል።`;
 
-// ––––– HELPER: Customer info for owner (plain text) –––––
+// ––––– HELPER: Customer info for owner –––––
 function formatCustomerInfo(user) {
   let name = user.first_name || '';
   if (user.last_name) name += ' ' + user.last_name;
@@ -75,14 +75,13 @@ async function askGemini(text) {
   }
 }
 
-// ––––– SERVERLESS HANDLER (Vercel / Netlify / AWS) –––––
+// ––––– SERVERLESS HANDLER –––––
 export default async function handler(req, res) {
   // Health check
   if (req.method === 'GET') {
     return res.status(200).send('Marshalom AI Bot is running! 🤖');
   }
 
-  // Only POST requests from Telegram
   if (req.method !== 'POST') {
     return res.status(200).send('OK');
   }
@@ -97,28 +96,56 @@ export default async function handler(req, res) {
     const chatId = message.chat.id;
     const isOwner = String(chatId) === String(OWNER_CHAT_ID);
 
-    // –––– /start ––––
+    // –––– OWNER REPLIES ––––
+    if (isOwner) {
+      // If the owner replies to a forwarded message, send that reply to the original customer
+      if (message.reply_to_message) {
+        const replied = message.reply_to_message;
+        // Check if the replied message was forwarded from a user
+        let targetChatId = null;
+        if (replied.forward_from) {
+          targetChatId = replied.forward_from.id;
+        } else if (replied.forward_from_chat) {
+          targetChatId = replied.forward_from_chat.id;
+        }
+        if (targetChatId && message.text) {
+          await sendTelegram(targetChatId, `📩 *Reply from Owner:*\n${message.text}`);
+          await sendTelegram(OWNER_CHAT_ID, `✅ Your reply was sent to the customer.`);
+          return res.status(200).send('OK');
+        } else {
+          // If it's not a forwarded message, we ignore or send a help message
+          await sendTelegram(OWNER_CHAT_ID, "ℹ️ Reply to a forwarded customer message to send a reply.");
+          return res.status(200).send('OK');
+        }
+      } else {
+        // Owner sent a normal message (not a reply) – we can ignore or show help
+        if (message.text === '/start') {
+          await sendTelegram(OWNER_CHAT_ID, "👋 You are the owner. Reply to any forwarded customer message to answer them.");
+        }
+        return res.status(200).send('OK');
+      }
+    }
+
+    // –––– CUSTOMER MESSAGES ––––
+
+    // /start
     if (message.text === '/start') {
       const welcome = '✨ እንኳን ደህና መጡ ወደ ማርሻሎም (Marshalom)! ✨\n📢 ቻናላችንን ይቀላቀሉ፡ https://t.me/cctvcamera2018 \n📞 ለበለጠ መረጃ፡ 0931556590';
       await sendTelegram(chatId, welcome);
-      if (!isOwner) {
-        await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n📝 Command: /start\n🤖 Reply: ${welcome}`);
-      }
+      await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n📝 Command: /start\n🤖 Reply: ${welcome}`);
       return res.status(200).send('OK');
     }
 
-    // –––– Voice ––––
+    // Voice
     if (message.voice) {
       await forwardTelegram(chatId, message.message_id);
       const reply = '⏳ መልእክትዎ ደርሷል፣ ማርሻሎም በቅርቡ ይደውልልዎታል!';
       await sendTelegram(chatId, reply);
-      if (!isOwner) {
-        await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n🎤 Voice (forwarded above)\n🤖 Reply: ${reply}`);
-      }
+      await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n🎤 Voice (forwarded above)\n🤖 Reply: ${reply}`);
       return res.status(200).send('OK');
     }
 
-    // –––– Text ––––
+    // Text
     if (message.text) {
       const aiReply = await askGemini(message.text);
       let finalReply = aiReply;
@@ -126,9 +153,7 @@ export default async function handler(req, res) {
         finalReply = '🌟 ማርሻሎም (Marshalom) የቴክኖሎጂ ረዳት 🌟\nሰላም! መልእክትዎን ስላደረሱን እናመሰግናለን። 🙏\nአሁን ላይ እጅግ በጣም ብዙ ጥያቄዎችን በማስተናገድ ላይ ስለሆንን፣ ትክክለኛ ምላሽ ለእርስዎ ለመስጠት የ Shalom Technology ፍቃድ በመጠበቅ ላይ እገኛለሁ። ⏳\nአትጨነቁ! መልእክትዎ በአስተማማኝ ሁኔታ ተይዟል። 🤝✨\n⚠️ ጉዳይዎ አስቸኳይ ከሆነ፣ ይህን ቅጽ በመከተል ይላኩልን፦\n\nአስቸኳይ ብለው ይጻፉ።\nየችግሩን ወይም የጥያቄዎን ዝርዝር በአጭሩ ይግለጹ።\n(ምሳሌ፦ አስቸኳይ፣ ካሜራዬ አይሰራም ወይም ሌላ... ) 🚨\nማሳሰቢያ፦ ይህንን የእርሶን ጉዳይ በመረዳት በቀጥታ ወደ ማርሻሎም የግል (SMS) እልካለው ። ደርሶት፣ በአጭር ጊዜ ውስጥ እራሱ ይደውልልዎታል! 📱';
       }
       await sendTelegram(chatId, finalReply);
-      if (!isOwner) {
-        await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n💬 Question: ${message.text}\n🤖 Reply: ${finalReply}`);
-      }
+      await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n💬 Question: ${message.text}\n🤖 Reply: ${finalReply}`);
       return res.status(200).send('OK');
     }
 
