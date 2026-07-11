@@ -9,36 +9,47 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 አገልግሎቶቻችን: CCTV ካሜራ (ገጠማ/ጥገና), የኔትወርክ ገጠማ, የኦንላይን ገበያ ምርቶች ማድረስ።
 ስለ ዋጋ: "ዝርዝሩን ንገረኝ — ላንተ ምርጥ ዋጋ እና ቅናሽ እናዘጋጅልሃለን" በል።`;
 
-// Helper to format customer info for owner messages
+// Helper to format customer info for owner (plain text)
 function formatCustomerInfo(user) {
   let name = user.first_name || '';
   if (user.last_name) name += ' ' + user.last_name;
-  let info = `👤 *${name}*`;
+  let info = `Customer: ${name}`;
   if (user.username) info += ` (@${user.username})`;
-  info += `\n🆔 User ID: \`${user.id}\``;
-  // Add a clickable link to the user's profile (works in Telegram)
-  info += `\n🔗 [Profile](${`tg://user?id=${user.id}`})`;
+  info += `\nUser ID: ${user.id}`;
+  info += `\nProfile link: tg://user?id=${user.id}`;
   return info;
 }
 
-async function sendTelegram(chatId, text, parse_mode = 'Markdown') {
+async function sendTelegram(chatId, text) {
   try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: parse_mode })
+      body: JSON.stringify({ chat_id: chatId, text: text })
     });
-  } catch(e) { console.error("sendTelegram error:", e); }
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error("sendTelegram failed:", resp.status, errText);
+    }
+  } catch(e) { 
+    console.error("sendTelegram exception:", e); 
+  }
 }
 
 async function forwardTelegram(fromChatId, messageId) {
   try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`, {
+    const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/forwardMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: OWNER_CHAT_ID, from_chat_id: fromChatId, message_id: messageId })
     });
-  } catch(e) { console.error("forwardTelegram error:", e); }
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error("forwardTelegram failed:", resp.status, errText);
+    }
+  } catch(e) { 
+    console.error("forwardTelegram exception:", e); 
+  }
 }
 
 async function askGemini(text) {
@@ -54,7 +65,10 @@ async function askGemini(text) {
       return data.candidates[0].content.parts[0].text;
     }
     return "busy";
-  } catch(e) { return "busy"; }
+  } catch(e) { 
+    console.error("askGemini error:", e);
+    return "busy"; 
+  }
 }
 
 export default async function handler(req, res) {
@@ -66,19 +80,21 @@ export default async function handler(req, res) {
     if (!update || !update.message) return res.status(200).send("OK");
     const { message } = update;
     const chatId = message.chat.id;
-    const isOwner = chatId == OWNER_CHAT_ID; // prevent self-forwarding
+    const isOwner = String(chatId) === String(OWNER_CHAT_ID); // robust comparison
 
+    // ---- /start command ----
     if (message.text === "/start") {
       const welcomeText = "✨ እንኳን ደህና መጡ ወደ ማርሻሎም (Marshalom)! ✨\n📢 ቻናላችንን ይቀላቀሉ፡ https://t.me/cctvcamera2018 \n📞 ለበለጠ መረጃ፡ 0931556590";
       await sendTelegram(chatId, welcomeText);
       if (!isOwner) {
         const customerInfo = formatCustomerInfo(message.from);
         await sendTelegram(OWNER_CHAT_ID, 
-          `${customerInfo}\n\n📝 *Command:* /start\n\n🤖 *Bot reply:* ${welcomeText}`);
+          `${customerInfo}\n\nCommand: /start\nBot reply: ${welcomeText}`);
       }
       return res.status(200).send("OK");
     }
 
+    // ---- Voice messages ----
     if (message.voice) {
       await forwardTelegram(chatId, message.message_id);
       const voiceReply = "⏳ መልእክትዎ ደርሷል፣ ማርሻሎም በቅርቡ ይደውልልዎታል!";
@@ -86,11 +102,12 @@ export default async function handler(req, res) {
       if (!isOwner) {
         const customerInfo = formatCustomerInfo(message.from);
         await sendTelegram(OWNER_CHAT_ID,
-          `${customerInfo}\n\n🎤 *Voice message* (forwarded above)\n\n🤖 *Bot reply:* ${voiceReply}`);
+          `${customerInfo}\n\nVoice message (forwarded above)\nBot reply: ${voiceReply}`);
       }
       return res.status(200).send("OK");
     }
 
+    // ---- Text messages ----
     if (message.text) {
       const aiReply = await askGemini(message.text);
       if (aiReply === "busy") {
@@ -99,19 +116,20 @@ export default async function handler(req, res) {
         if (!isOwner) {
           const customerInfo = formatCustomerInfo(message.from);
           await sendTelegram(OWNER_CHAT_ID,
-            `${customerInfo}\n\n💬 *Question:* ${message.text}\n\n🤖 *Bot reply:* ${busyReply}`);
+            `${customerInfo}\n\nQuestion: ${message.text}\nBot reply: ${busyReply}`);
         }
       } else {
         await sendTelegram(chatId, aiReply);
         if (!isOwner) {
           const customerInfo = formatCustomerInfo(message.from);
           await sendTelegram(OWNER_CHAT_ID,
-            `${customerInfo}\n\n💬 *Question:* ${message.text}\n\n🤖 *Bot reply:* ${aiReply}`);
+            `${customerInfo}\n\nQuestion: ${message.text}\nBot reply: ${aiReply}`);
         }
       }
     }
     return res.status(200).send("OK");
   } catch(err) {
+    console.error("Handler error:", err);
     return res.status(200).send("OK");
   }
 }
