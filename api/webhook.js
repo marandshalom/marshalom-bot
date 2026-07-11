@@ -54,25 +54,40 @@ export default async function handler(req, res) {
     if (!update || !update.message) return res.status(200).send("OK");
     const { message } = update;
     const chatId = message.chat.id;
+    const isOwner = chatId == OWNER_CHAT_ID; // to prevent forwarding to self
 
     if (message.text === "/start") {
-      await sendTelegram(chatId, "✨ እንኳን ደህና መጡ ወደ ማርሻሎም (Marshalom)! ✨\n📢 ቻናላችንን ይቀላቀሉ፡ https://t.me/cctvcamera2018 \n📞 ለበለጠ መረጃ፡ 0931556590");
+      const welcomeText = "✨ እንኳን ደህና መጡ ወደ ማርሻሎም (Marshalom)! ✨\n📢 ቻናላችንን ይቀላቀሉ፡ https://t.me/cctvcamera2018 \n📞 ለበለጠ መረጃ፡ 0931556590";
+      await sendTelegram(chatId, welcomeText);
+      if (!isOwner) {
+        await sendTelegram(OWNER_CHAT_ID, `👤 ደንበኛ: ${message.from.first_name}\n💬 ጥያቄ: /start\n\n🤖 መልስ: ${welcomeText}`);
+      }
       return res.status(200).send("OK");
     }
 
     if (message.voice) {
       await forwardTelegram(chatId, message.message_id);
-      await sendTelegram(chatId, "⏳ መልእክትዎ ደርሷል፣ ማርሻሎም በቅርቡ ይደውልልዎታል!");
+      const voiceReply = "⏳ መልእክትዎ ደርሷል፣ ማርሻሎም በቅርቡ ይደውልልዎታል!";
+      await sendTelegram(chatId, voiceReply);
+      if (!isOwner) {
+        await sendTelegram(OWNER_CHAT_ID, `👤 ደንበኛ: ${message.from.first_name}\n🎤 ድምጽ መልክት (ተላልፏል)\n\n🤖 መልስ: ${voiceReply}`);
+      }
       return res.status(200).send("OK");
     }
 
     if (message.text) {
       const aiReply = await askGemini(message.text);
       if (aiReply === "busy") {
-        await sendTelegram(chatId, "🌟 ማርሻሎም (Marshalom) የቴክኖሎጂ ረዳት 🌟\nሰላም! መልእክትዎን ስላደረሱን እናመሰግናለን። 🙏\nአሁን ላይ እጅግ በጣም ብዙ ጥያቄዎችን በማስተናገድ ላይ ስለሆንን፣ ትክክለኛ ምላሽ ለእርስዎ ለመስጠት የ Shalom Technology  ፍቃድ በመጠበቅ ላይ እገኛለሁ። ⏳\nአትጨነቁ! መልእክትዎ በአስተማማኝ ሁኔታ ተይዟል። 🤝✨\n⚠️ ጉዳይዎ አስቸኳይ ከሆነ፣ ይህን ቅጽ በመከተል ይላኩልን፦\n\nአስቸኳይ ብለው ይጻፉ።\nየችግሩን ወይም የጥያቄዎን ዝርዝር በአጭሩ ይግለጹ።\n(ምሳሌ፦ አስቸኳይ፣ ካሜራዬ አይሰራም ወይም ሌላ... ) 🚨\nማሳሰቢያ፦ ይህንን የእርሶን ጉዳይ በመረዳት በቀጥታ ወደ ማርሻሎም የግል  (SMS) እልካለው ። ደርሶት፣ በአጭር ጊዜ ውስጥ እራሱ ይደውልልዎታል! 📱");
+        const busyReply = "🌟 ማርሻሎም (Marshalom) የቴክኖሎጂ ረዳት 🌟\nሰላም! መልእክትዎን ስላደረሱን እናመሰግናለን። 🙏\nአሁን ላይ እጅግ በጣም ብዙ ጥያቄዎችን በማስተናገድ ላይ ስለሆንን፣ ትክክለኛ ምላሽ ለእርስዎ ለመስጠት የ Shalom Technology  ፍቃድ በመጠበቅ ላይ እገኛለሁ። ⏳\nአትጨነቁ! መልእክትዎ በአስተማማኝ ሁኔታ ተይዟል። 🤝✨\n⚠️ ጉዳይዎ አስቸኳይ ከሆነ፣ ይህን ቅጽ በመከተል ይላኩልን፦\n\nአስቸኳይ ብለው ይጻፉ።\nየችግሩን ወይም የጥያቄዎን ዝርዝር በአጭሩ ይግለጹ።\n(ምሳሌ፦ አስቸኳይ፣ ካሜራዬ አይሰራም ወይም ሌላ... ) 🚨\nማሳሰቢያ፦ ይህንን የእርሶን ጉዳይ በመረዳት በቀጥታ ወደ ማርሻሎም የግል  (SMS) እልካለው ። ደርሶት፣ በአጭር ጊዜ ውስጥ እራሱ ይደውልልዎታል! 📱";
+        await sendTelegram(chatId, busyReply);
+        if (!isOwner) {
+          await sendTelegram(OWNER_CHAT_ID, `👤 ደንበኛ: ${message.from.first_name}\n💬 ጥያቄ: ${message.text}\n\n🤖 መልስ: ${busyReply}`);
+        }
       } else {
         await sendTelegram(chatId, aiReply);
-        await sendTelegram(OWNER_CHAT_ID, `👤 ደንበኛ: ${message.from.first_name}\n💬 ጥያቄ: ${message.text}\n\n🤖 መልስ: ${aiReply}`);
+        if (!isOwner) {
+          await sendTelegram(OWNER_CHAT_ID, `👤 ደንበኛ: ${message.from.first_name}\n💬 ጥያቄ: ${message.text}\n\n🤖 መልስ: ${aiReply}`);
+        }
       }
     }
     return res.status(200).send("OK");
