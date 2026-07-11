@@ -10,7 +10,7 @@ const SYSTEM_PROMPT = `አንተ "Marshalom AI" ነህ — የ Shalom Technology
 አገልግሎቶቻችን: CCTV ካሜራ (ገጠማ/ጥገና), የኔትወርክ ገጠማ, የኦንላይን ገበያ ምርቶች ማድረስ።
 ስለ ዋጋ: "ዝርዝሩን ንገረኝ — ላንተ ምርጥ ዋጋ እና ቅናሽ እናዘጋጅልሃለን" በል።`;
 
-// ––––– HELPER: Customer info for owner –––––
+// ––––– HELPER: Customer info –––––
 function formatCustomerInfo(user) {
   let name = user.first_name || '';
   if (user.last_name) name += ' ' + user.last_name;
@@ -21,7 +21,7 @@ function formatCustomerInfo(user) {
   return info;
 }
 
-// ––––– TELEGRAM API HELPERS –––––
+// ––––– TELEGRAM HELPERS –––––
 async function sendTelegram(chatId, text) {
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   try {
@@ -50,10 +50,10 @@ async function forwardTelegram(fromChatId, messageId) {
   }
 }
 
-// ––––– GEMINI AI –––––
+// ––––– GEMINI –––––
 async function askGemini(text) {
   if (!GEMINI_API_KEY) {
-    console.warn('GEMINI_API_KEY is missing – using fallback busy reply.');
+    console.warn('GEMINI_API_KEY missing – fallback busy.');
     return 'busy';
   }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
@@ -67,30 +67,20 @@ async function askGemini(text) {
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       return data.candidates[0].content.parts[0].text;
     }
-    console.warn('Gemini returned no text:', data);
     return 'busy';
   } catch (e) {
-    console.error('askGemini error:', e);
     return 'busy';
   }
 }
 
-// ––––– SERVERLESS HANDLER –––––
+// ––––– HANDLER –––––
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    return res.status(200).send('Marshalom AI Bot is running! 🤖');
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(200).send('OK');
-  }
+  if (req.method === 'GET') return res.status(200).send('Marshalom AI Bot is running! 🤖');
+  if (req.method !== 'POST') return res.status(200).send('OK');
 
   try {
     const update = req.body;
-    if (!update || !update.message) {
-      return res.status(200).send('OK');
-    }
-
+    if (!update || !update.message) return res.status(200).send('OK');
     const { message } = update;
     const chatId = message.chat.id;
     const isOwner = String(chatId) === String(OWNER_CHAT_ID);
@@ -100,35 +90,40 @@ export default async function handler(req, res) {
       if (message.reply_to_message) {
         const replied = message.reply_to_message;
         let targetChatId = null;
-        if (replied.forward_from) {
-          targetChatId = replied.forward_from.id;
-        } else if (replied.forward_from_chat) {
-          targetChatId = replied.forward_from_chat.id;
-        }
+        if (replied.forward_from) targetChatId = replied.forward_from.id;
+        else if (replied.forward_from_chat) targetChatId = replied.forward_from_chat.id;
         if (targetChatId && message.text) {
           await sendTelegram(targetChatId, `📩 Reply from Owner:\n${message.text}`);
-          await sendTelegram(OWNER_CHAT_ID, `✅ Your reply was sent to the customer.`);
-          return res.status(200).send('OK');
+          await sendTelegram(OWNER_CHAT_ID, '✅ Your reply was sent.');
         } else {
-          await sendTelegram(OWNER_CHAT_ID, "ℹ️ Reply to a forwarded customer message to send a reply.");
-          return res.status(200).send('OK');
-        }
-      } else {
-        if (message.text === '/start') {
-          await sendTelegram(OWNER_CHAT_ID, "👋 You are the owner. Reply to any forwarded customer message to answer them.");
+          await sendTelegram(OWNER_CHAT_ID, 'ℹ️ Reply to a forwarded customer message.');
         }
         return res.status(200).send('OK');
       }
+      // Owner normal message – ignore or show help
+      if (message.text === '/start') {
+        await sendTelegram(OWNER_CHAT_ID, '👋 You are the owner. Reply to forwarded messages to answer customers.');
+      }
+      return res.status(200).send('OK');
     }
 
     // –––– CUSTOMER MESSAGES ––––
 
+    // /test command – quick test
+    if (message.text === '/test') {
+      await forwardTelegram(chatId, message.message_id);
+      const testReply = '✅ Test reply – your message was received!';
+      await sendTelegram(chatId, testReply);
+      await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n🧪 /test command\n🤖 Reply: ${testReply}`);
+      return res.status(200).send('OK');
+    }
+
     // /start
     if (message.text === '/start') {
       await forwardTelegram(chatId, message.message_id);
-      const welcome = '✨ እንኳን ደህና መጡ ወደ ማርሻሎም (Marshalom)! ✨\n📢 ቻናላችንን ይቀላቀሉ፡ https://t.me/cctvcamera2018 \n📞 ለበለጠ መረጃ፡ 0931556590';
+      const welcome = '🔄 TEST VERSION – if you see this, the bot is updated!\n\n✨ እንኳን ደህና መጡ ወደ ማርሻሎም (Marshalom)! ✨\n📢 ቻናላችንን ይቀላቀሉ፡ https://t.me/cctvcamera2018 \n📞 ለበለጠ መረጃ፡ 0931556590';
       await sendTelegram(chatId, welcome);
-      await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n📝 Command: /start\n🤖 Reply: ${welcome}`);
+      await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n📝 /start\n🤖 Reply: ${welcome}`);
       return res.status(200).send('OK');
     }
 
@@ -137,11 +132,11 @@ export default async function handler(req, res) {
       await forwardTelegram(chatId, message.message_id);
       const reply = '⏳ መልእክትዎ ደርሷል፣ ማርሻሎም በቅርቡ ይደውልልዎታል!';
       await sendTelegram(chatId, reply);
-      await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n🎤 Voice (forwarded above)\n🤖 Reply: ${reply}`);
+      await sendTelegram(OWNER_CHAT_ID, `${formatCustomerInfo(message.from)}\n\n🎤 Voice\n🤖 Reply: ${reply}`);
       return res.status(200).send('OK');
     }
 
-    // Text
+    // Text (regular question)
     if (message.text) {
       await forwardTelegram(chatId, message.message_id);
       const aiReply = await askGemini(message.text);
